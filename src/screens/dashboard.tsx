@@ -17,12 +17,29 @@ import { DreamBufferCard } from '@/components/dream-buffer-card';
 import { EnvelopeGrid } from '@/components/envelope-grid';
 import { HeroCard } from '@/components/hero-card';
 import { RecentList } from '@/components/recent-list';
+import type { Expense } from '@/data/mock';
 import { colors } from '@/theme';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState<Expense | null>(null);
+
+  const openNewExpense = () => {
+    setEditing(null);
+    setSheetOpen(true);
+  };
+
+  const openExpense = (expense: Expense) => {
+    setEditing(expense);
+    setSheetOpen(true);
+  };
+
+  const closeSheet = () => {
+    setSheetOpen(false);
+    setEditing(null);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
@@ -47,7 +64,10 @@ export default function DashboardScreen() {
             <HeroCard />
             <DreamBufferCard />
             <EnvelopeGrid onEditPlan={() => router.push('/plan')} />
-            <RecentList />
+            <RecentList
+              onSelect={openExpense}
+              onViewAll={() => router.push('/history')}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -55,10 +75,15 @@ export default function DashboardScreen() {
       <BottomNav
         active="home"
         onTabPress={(tab) => (tab === 'plan' ? router.push('/plan') : undefined)}
-        onAddPress={() => setSheetOpen(true)}
+        onAddPress={openNewExpense}
       />
 
-      <AddExpenseSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <AddExpenseSheet
+        key={editing?.id ?? 'new'}
+        visible={sheetOpen}
+        expense={editing}
+        onClose={closeSheet}
+      />
     </View>
   );
 }

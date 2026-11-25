@@ -27,3 +27,24 @@ export function timeAgo(iso: string, now: number = Date.now()): string {
 
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
+
+/** Local `yyyy-mm-dd` key — one per calendar day, used to group the history. */
+export function dayKey(iso: string): string {
+  const date = new Date(iso);
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/** "Today", "Yesterday", or "24 Nov 2026". */
+export function dayLabel(iso: string, now: number = Date.now()): string {
+  const key = dayKey(iso);
+  if (key === dayKey(new Date(now).toISOString())) return 'Today';
+  if (key === dayKey(new Date(now - DAY).toISOString())) return 'Yesterday';
+
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}

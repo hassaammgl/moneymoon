@@ -1,17 +1,20 @@
 /**
- * AddExpenseSheet — the bottom sheet for logging a spend.
+ * AddExpenseSheet — the bottom sheet for logging or editing a spend.
  *
  * Step 12a: shell (handle, title, close).
  * Step 12b: amount card with the big input and quick-add chips.
  * Step 12c: "Paid by" cards and category chips.
  * Step 12d: note and save.
+ * Later: edit mode — pass an `expense` and every field starts filled, Save calls
+ * `updateExpense`, and a confirmed Delete appears under the button.
  *
  * Built on React Native's Modal so there is no extra dependency. The backdrop
  * closes the sheet; the close button is a 44px target.
  */
-import { Check, Heart, X } from 'lucide-react-native';
+import { Check, Heart, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,7 +27,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ENVELOPES, type EnvelopeId } from '@/constants/envelopes';
-import type { Payer } from '@/data/mock';
+import type { Expense, Payer } from '@/data/mock';
 import { formatAmount, parseAmountInput } from '@/lib/money';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
@@ -48,34 +51,65 @@ const CATEGORY_LABEL: Record<EnvelopeId, string> = ENVELOPES.reduce(
 export interface AddExpenseSheetProps {
   visible: boolean;
   onClose: () => void;
+  /** Pass an existing expense to edit it; omit to log a new one. */
+  expense?: Expense | null;
 }
 
-export function AddExpenseSheet({ visible, onClose }: AddExpenseSheetProps) {
+export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpenseSheetProps) {
   const insets = useSafeAreaInsets();
-  const { addExpense } = useBudget();
-  const [amount, setAmount] = useState(0);
-  const [paidBy, setPaidBy] = useState<Payer>('wife');
-  const [category, setCategory] = useState<EnvelopeId>('groceries');
-  const [note, setNote] = useState('');
+  const { addExpense, updateExpense, deleteExpense } = useBudget();
+  const [amount, setAmount] = useState(expense?.amount ?? 0);
+  const [paidBy, setPaidBy] = useState<Payer>(expense?.paidBy ?? 'wife');
+  const [category, setCategory] = useState<EnvelopeId>(expense?.envelopeId ?? 'groceries');
+  const [note, setNote] = useState(expense?.note ?? '');
+  const isEditing = expense !== null;
 
   const handleSave = () => {
     if (amount <= 0) return;
 
-    addExpense({
-      id: `exp-${Date.now()}`,
+    const fields = {
       amount,
       paidBy,
       envelopeId: category,
       note: note.trim() || CATEGORY_LABEL[category],
-      createdAt: new Date().toISOString(),
-      createdByUid: paidBy === 'wife' ? 'uid-wife' : 'uid-husband',
-    });
+    };
+
+    if (expense) {
+      updateExpense(expense.id, fields);
+    } else {
+      addExpense({
+        ...fields,
+        id: `exp-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        createdByUid: paidBy === 'wife' ? 'uid-wife' : 'uid-husband',
+      });
+    }
 
     setAmount(0);
     setPaidBy('wife');
     setCategory('groceries');
     setNote('');
     onClose();
+  };
+
+  const handleDelete = () => {
+    if (!expense) return;
+
+    Alert.alert(
+      'Delete this expense?',
+      `Rs ${formatAmount(expense.amount)} for ${CATEGORY_LABEL[expense.envelopeId]} will be removed for both of you.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteExpense(expense.id);
+            onClose();
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -142,7 +176,7 @@ export function AddExpenseSheet({ visible, onClose }: AddExpenseSheetProps) {
                   color: colors.ink,
                 }}
               >
-                Add expense
+                {isEditing ? 'Edit expense' : 'Add expense'}
               </Text>
 
               <Pressable
@@ -426,13 +460,13 @@ export function AddExpenseSheet({ visible, onClose }: AddExpenseSheetProps) {
             {/* Save ------------------------------------------------------- */}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Save expense"
+              accessibilityLabel={isEditing ? 'Save changes' : 'Save expense'}
               disabled={amount <= 0}
               onPress={handleSave}
               style={{
                 minHeight: 54,
                 marginTop: 20,
-                marginBottom: 4,
+                marginBottom: isEditing ? 10 : 4,
                 borderRadius: 999,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -451,9 +485,42 @@ export function AddExpenseSheet({ visible, onClose }: AddExpenseSheetProps) {
                   color: colors.surface,
                 }}
               >
-                Save together
+                {isEditing ? 'Save changes' : 'Save together'}
               </Text>
             </Pressable>
+
+            {/* Delete — edit mode only ------------------------------------ */}
+            {isEditing ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Delete expense"
+                onPress={handleDelete}
+                style={{
+                  minHeight: 48,
+                  marginBottom: 4,
+                  borderRadius: 999,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  borderWidth: 1,
+                  borderColor: colors['rose-line'],
+                  backgroundColor: colors.surface,
+                }}
+              >
+                <Trash2 size={16} color={colors['rose-ink']} strokeWidth={2} />
+                <Text
+                  style={{
+                    fontFamily: fonts['sans-semibold'],
+                    fontSize: 14,
+                    lineHeight: 19,
+                    color: colors['rose-ink'],
+                  }}
+                >
+                  Delete expense
+                </Text>
+              </Pressable>
+            ) : null}
           </ScrollView>
         </View>
       </KeyboardAvoidingView>

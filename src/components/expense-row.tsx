@@ -11,7 +11,6 @@ import { Pill } from '@/components/ui/pill';
 import { Money } from '@/components/ui/money';
 import { getEnvelope } from '@/constants/envelopes';
 import type { Expense, Payer } from '@/data/mock';
-import { MOCK_NOW } from '@/data/mock';
 import { timeAgo } from '@/lib/time';
 import { colors, fonts } from '@/theme';
 
@@ -83,7 +82,7 @@ export function ExpenseRow({ expense }: ExpenseRowProps) {
               color: colors['ink-muted'],
             }}
           >
-            {timeAgo(expense.createdAt, MOCK_NOW.getTime())}
+            {timeAgo(expense.createdAt)}
           </Text>
         </View>
       </View>

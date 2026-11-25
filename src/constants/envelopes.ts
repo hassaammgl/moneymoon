@@ -2,9 +2,8 @@
  * The seven budget envelopes and the four dashboard groups.
  *
  * These are the defaults a household starts from. Once the Monthly Plan screen
- * is wired to Firestore the limits come from `households/{id}/months/{yyyy-mm}`;
- * the ids, names, icons and grouping stay here because they are app constants,
- * not user data.
+ * is wired to Supabase the limits come from the `months` table; the ids, names,
+ * icons and grouping stay here because they are app constants, not user data.
  */
 
 import type { LucideIcon } from 'lucide-react-native';

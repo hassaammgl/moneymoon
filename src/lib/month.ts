@@ -1,9 +1,9 @@
 /**
  * Month helpers.
  *
- * A month is identified by the string `yyyy-mm` because that is the Firestore
- * document id (`households/{id}/months/2026-11`). All maths uses local dates so
- * the "days left" pill matches the user's calendar.
+ * A month is identified by the string `yyyy-mm` because that is the primary key
+ * of a row in the `months` table. All maths uses local dates so the "days left"
+ * pill matches the user's calendar.
  */
 
 const MONTH_NAMES = [

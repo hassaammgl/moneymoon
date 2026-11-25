@@ -4,7 +4,9 @@
  *
  * Screens never import `data/mock.ts`: they read state and call actions on
  * `useBudget()`. Every mutation lives here, in one reducer, so swapping the
- * mock for Firestore later touches this file only.
+ * mock for Supabase later touches this file only. The action signatures are the
+ * seam the future data layer plugs into: screens call them and never learn
+ * whether the state came from the reducer or the network.
  *
  * Derived values (spent, left, buffer, per-envelope and per-group totals) are
  * never stored — they are computed from `lib/budget.ts` selectors at render.
@@ -23,6 +25,7 @@ import {
   type Household,
   type MonthPlan,
 } from '@/data/mock';
+import { totalLimits } from '@/lib/budget';
 
 export interface BudgetState {
   household: Household;
@@ -110,6 +113,9 @@ function budgetReducer(state: BudgetState, action: BudgetAction): BudgetState {
     }
 
     case 'lockPlan': {
+      // A plan can never be locked while the envelopes add up to more than the
+      // income — the screen disables the button, the reducer enforces it.
+      if (totalLimits(state.month.limits) > state.month.income) return state;
       return { ...state, month: { ...state.month, locked: true } };
     }
 

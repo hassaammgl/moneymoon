@@ -11,6 +11,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import type { Envelope } from '@/constants/envelopes';
 import { Money } from '@/components/ui/money';
+import { formatAmount } from '@/lib/money';
 import { colors, fonts } from '@/theme';
 
 const BUTTON_STEP = 500;
@@ -19,6 +20,8 @@ const SLIDER_STEP = 100;
 export interface PlanEnvelopeRowProps {
   envelope: Envelope;
   limit: number;
+  /** Spend logged against this envelope, from `spentByEnvelope`. */
+  spent: number;
   onChange: (limit: number) => void;
   /** True while the month is locked: slider and both buttons stop. */
   disabled?: boolean;
@@ -27,6 +30,7 @@ export interface PlanEnvelopeRowProps {
 export function PlanEnvelopeRow({
   envelope,
   limit,
+  spent,
   onChange,
   disabled = false,
 }: PlanEnvelopeRowProps) {
@@ -34,6 +38,7 @@ export function PlanEnvelopeRow({
   const max = envelope.limit * 2;
   const accent = isHers ? colors.rose : colors.emerald;
   const accentInk = isHers ? colors['rose-ink'] : colors['emerald-ink'];
+  const isOver = spent > limit;
 
   const clamp = (value: number) => Math.max(0, Math.min(max, Math.round(value)));
 
@@ -74,6 +79,21 @@ export function PlanEnvelopeRow({
           color={isHers ? colors['rose-ink'] : colors.ink}
         />
       </View>
+
+      <Text
+        numberOfLines={1}
+        style={{
+          fontFamily: fonts.sans,
+          fontSize: 11,
+          lineHeight: 15,
+          marginTop: 2,
+          color: isOver ? colors['rose-ink'] : colors['ink-muted'],
+        }}
+      >
+        {isOver
+          ? `Rs ${formatAmount(spent - limit)} over this limit`
+          : `Rs ${formatAmount(spent)} spent · Rs ${formatAmount(limit - spent)} left`}
+      </Text>
 
       <View
         style={{

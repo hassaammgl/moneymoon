@@ -14,7 +14,7 @@ import { PlanEnvelopeRow } from '@/components/plan-envelope-row';
 import { Card } from '@/components/ui/card';
 import { Money } from '@/components/ui/money';
 import { ENVELOPES } from '@/constants/envelopes';
-import { bufferOf, totalLimits } from '@/lib/budget';
+import { bufferOf, spentByEnvelope, totalLimits } from '@/lib/budget';
 import { formatAmount } from '@/lib/money';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
@@ -58,11 +58,12 @@ function LegendRow({
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { month, setLimit, lockPlan, unlockPlan } = useBudget();
+  const { month, expenses, setLimit, lockPlan, unlockPlan } = useBudget();
 
   const income = month.income;
   const limits = month.limits;
   const locked = month.locked;
+  const spent = spentByEnvelope(expenses);
   const inEnvelopes = totalLimits(limits);
   const buffer = bufferOf(income, limits);
   const envelopeShare = income > 0 ? Math.min(1, inEnvelopes / income) : 0;
@@ -200,6 +201,7 @@ export default function PlanScreen() {
                   key={envelope.id}
                   envelope={envelope}
                   limit={limits[envelope.id]}
+                  spent={spent[envelope.id]}
                   disabled={locked}
                   onChange={(value) => setLimit(envelope.id, value)}
                 />

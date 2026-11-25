@@ -1,9 +1,9 @@
 /**
  * Mock household data for the static screens (Phase 2).
  *
- * One object per thing the real Firestore documents will hold, so swapping mock
- * for live data in Phase 3 is a matter of replacing the import — not reshaping
- * the screens.
+ * One object per thing the real Supabase rows will hold, so swapping mock for
+ * live data later is a matter of replacing the import — not reshaping the
+ * screens. The store (`src/store/budget-store.tsx`) is the only reader.
  *
  * Money is always integer PKR.
  */

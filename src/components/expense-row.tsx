@@ -10,14 +10,10 @@ import { Pressable, Text, View } from 'react-native';
 import { Pill } from '@/components/ui/pill';
 import { Money } from '@/components/ui/money';
 import { getEnvelope } from '@/constants/envelopes';
-import type { Expense, Payer } from '@/data/mock';
+import type { Expense } from '@/domain/types';
 import { timeAgo } from '@/lib/time';
+import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
-
-const PAYER_LABEL: Record<Payer, string> = {
-  husband: 'Husband',
-  wife: 'Wife',
-};
 
 export interface ExpenseRowProps {
   expense: Expense;
@@ -28,9 +24,13 @@ export interface ExpenseRowProps {
 }
 
 export function ExpenseRow({ expense, onPress, showCategory = false }: ExpenseRowProps) {
+  const { members } = useBudget();
   const envelope = getEnvelope(expense.envelopeId);
   const Icon = envelope.icon;
   const isHers = envelope.isHers;
+  const payer = members.find((member) => member.id === expense.paidBy);
+  const payerName = payer?.displayName ?? 'Unknown';
+  const payerRose = payer?.colorKey === 'rose';
 
   return (
     <Pressable
@@ -78,8 +78,8 @@ export function ExpenseRow({ expense, onPress, showCategory = false }: ExpenseRo
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
           <Pill
-            label={PAYER_LABEL[expense.paidBy]}
-            tone={expense.paidBy === 'wife' ? 'rose' : 'outline'}
+            label={payerName}
+            tone={payerRose ? 'rose' : 'outline'}
           />
           <Text
             numberOfLines={1}

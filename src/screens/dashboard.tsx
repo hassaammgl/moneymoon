@@ -17,7 +17,7 @@ import { DreamBufferCard } from '@/components/dream-buffer-card';
 import { EnvelopeGrid } from '@/components/envelope-grid';
 import { HeroCard } from '@/components/hero-card';
 import { RecentList } from '@/components/recent-list';
-import type { Expense } from '@/data/mock';
+import type { Expense } from '@/domain/types';
 import { colors } from '@/theme';
 
 export default function DashboardScreen() {

@@ -8,7 +8,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { ExpenseRow } from '@/components/expense-row';
 import { Card } from '@/components/ui/card';
-import type { Expense } from '@/data/mock';
+import type { Expense } from '@/domain/types';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 

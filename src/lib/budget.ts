@@ -11,12 +11,58 @@ import {
   type EnvelopeGroupId,
   type EnvelopeId,
 } from '@/constants/envelopes';
-import type { Expense } from '@/data/mock';
+import type { Expense, IncomeByMember, Member, MemberId } from '@/domain/types';
 
 export type EnvelopeStatus = 'ok' | 'tight' | 'over';
 
 /** Spent share of a limit at which the card starts warning. */
 export const TIGHT_AT = 0.8;
+
+/** One member's money, ready for a screen. */
+export interface MemberAmount {
+  memberId: MemberId;
+  displayName: string;
+  /** Avatar tint inherited from the member. */
+  colorKey: Member['colorKey'];
+  amount: number;
+}
+
+/** Household income = the sum of both partners' month incomes. Never stored. */
+export function combinedIncome(incomes: IncomeByMember): number {
+  return Object.values(incomes).reduce((sum, amount) => sum + amount, 0);
+}
+
+/** Per-partner income, in household order. */
+export function incomeByMember(
+  members: readonly Member[],
+  incomes: IncomeByMember,
+): MemberAmount[] {
+  return members.map((member) => ({
+    memberId: member.id,
+    displayName: member.displayName,
+    colorKey: member.colorKey,
+    amount: incomes[member.id] ?? 0,
+  }));
+}
+
+/** Per-partner spend — who actually paid, in household order. */
+export function spentByMember(
+  members: readonly Member[],
+  expenses: readonly Expense[],
+): MemberAmount[] {
+  const totals: Record<MemberId, number> = {};
+
+  for (const expense of expenses) {
+    totals[expense.paidBy] = (totals[expense.paidBy] ?? 0) + expense.amount;
+  }
+
+  return members.map((member) => ({
+    memberId: member.id,
+    displayName: member.displayName,
+    colorKey: member.colorKey,
+    amount: totals[member.id] ?? 0,
+  }));
+}
 
 /** Total logged spend for the month. */
 export function totalSpent(expenses: readonly Expense[]): number {

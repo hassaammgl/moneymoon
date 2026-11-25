@@ -5,7 +5,7 @@
  * Step 12b: amount card with the big input and quick-add chips.
  * Step 12c: "Paid by" cards and category chips.
  * Step 12d: note and save.
- * Later: edit mode — pass an `expense` and every field starts filled, Save calls
+ * Edit mode: pass an `expense` and every field starts filled, Save calls
  * `updateExpense`, and a confirmed Delete appears under the button.
  *
  * Built on React Native's Modal so there is no extra dependency. The backdrop
@@ -27,17 +27,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ENVELOPES, type EnvelopeId } from '@/constants/envelopes';
-import type { Expense, Payer } from '@/data/mock';
+import type { Expense, MemberId } from '@/domain/types';
+import { createId } from '@/lib/id';
 import { formatAmount, parseAmountInput } from '@/lib/money';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
 const QUICK_AMOUNTS = [100, 500, 1_000] as const;
-
-const PAYERS: readonly { id: Payer; label: string }[] = [
-  { id: 'husband', label: 'Husband' },
-  { id: 'wife', label: 'Wife' },
-];
 
 /** Category chip labels; Her Kharcha reads as "Her", not "Wife's". */
 const CATEGORY_LABEL: Record<EnvelopeId, string> = ENVELOPES.reduce(
@@ -57,15 +53,18 @@ export interface AddExpenseSheetProps {
 
 export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpenseSheetProps) {
   const insets = useSafeAreaInsets();
-  const { addExpense, updateExpense, deleteExpense } = useBudget();
+  const { members, addExpense, updateExpense, deleteExpense } = useBudget();
+  // Same default as before the member model: the second partner, falling back
+  // to the first if the household order ever changes.
+  const defaultPayerId = members[1]?.id ?? members[0]?.id ?? '';
   const [amount, setAmount] = useState(expense?.amount ?? 0);
-  const [paidBy, setPaidBy] = useState<Payer>(expense?.paidBy ?? 'wife');
+  const [paidBy, setPaidBy] = useState<MemberId>(expense?.paidBy ?? defaultPayerId);
   const [category, setCategory] = useState<EnvelopeId>(expense?.envelopeId ?? 'groceries');
   const [note, setNote] = useState(expense?.note ?? '');
   const isEditing = expense !== null;
 
   const handleSave = () => {
-    if (amount <= 0) return;
+    if (amount <= 0 || !paidBy) return;
 
     const fields = {
       amount,
@@ -79,14 +78,14 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
     } else {
       addExpense({
         ...fields,
-        id: `exp-${Date.now()}`,
+        id: createId(),
         createdAt: new Date().toISOString(),
-        createdByUid: paidBy === 'wife' ? 'uid-wife' : 'uid-husband',
+        createdBy: paidBy,
       });
     }
 
     setAmount(0);
-    setPaidBy('wife');
+    setPaidBy(defaultPayerId);
     setCategory('groceries');
     setNote('');
     onClose();
@@ -308,15 +307,15 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
             </Text>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              {PAYERS.map((payer) => {
-                const selected = paidBy === payer.id;
+              {members.map((member) => {
+                const selected = paidBy === member.id;
                 return (
                   <Pressable
-                    key={payer.id}
+                    key={member.id}
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
-                    accessibilityLabel={`Paid by ${payer.label}`}
-                    onPress={() => setPaidBy(payer.id)}
+                    accessibilityLabel={`Paid by ${member.displayName}`}
+                    onPress={() => setPaidBy(member.id)}
                     style={{
                       flex: 1,
                       minHeight: 56,
@@ -338,7 +337,7 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor:
-                          payer.id === 'husband' ? colors.ink : colors.rose,
+                          member.colorKey === 'ink' ? colors.ink : colors.rose,
                       }}
                     >
                       <Text
@@ -346,10 +345,11 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
                           fontFamily: fonts['sans-semibold'],
                           fontSize: 11,
                           lineHeight: 14,
-                          color: payer.id === 'husband' ? colors.cream : colors.surface,
+                          color:
+                            member.colorKey === 'ink' ? colors.cream : colors.surface,
                         }}
                       >
-                        {payer.label.charAt(0)}
+                        {member.displayName.charAt(0)}
                       </Text>
                     </View>
 
@@ -363,7 +363,7 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
                         color: selected ? colors['rose-ink'] : colors.ink,
                       }}
                     >
-                      {payer.label}
+                      {member.displayName}
                     </Text>
 
                     {selected ? (

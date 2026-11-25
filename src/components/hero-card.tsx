@@ -9,7 +9,7 @@ import { Text, View } from 'react-native';
 import { Card } from '@/components/ui/card';
 import { Money } from '@/components/ui/money';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { bufferOf, leftOf, totalSpent } from '@/lib/budget';
+import { bufferOf, combinedIncome, leftOf, totalSpent } from '@/lib/budget';
 import { formatAmount } from '@/lib/money';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
@@ -50,7 +50,7 @@ function StatBox({
 
 export function HeroCard() {
   const { month, expenses } = useBudget();
-  const income = month.income;
+  const income = combinedIncome(month.incomes);
   const spent = totalSpent(expenses);
   const left = leftOf(income, expenses);
   const buffer = bufferOf(income, month.limits);

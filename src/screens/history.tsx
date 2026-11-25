@@ -15,7 +15,7 @@ import { AddExpenseSheet } from '@/components/add-expense-sheet';
 import { BottomNav, BOTTOM_NAV_SPACE } from '@/components/bottom-nav';
 import { ExpenseRow } from '@/components/expense-row';
 import { Card } from '@/components/ui/card';
-import type { Expense } from '@/data/mock';
+import type { Expense } from '@/domain/types';
 import { dayKey, dayLabel } from '@/lib/time';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';

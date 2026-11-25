@@ -9,14 +9,14 @@ import { Text, View } from 'react-native';
 import { Card } from '@/components/ui/card';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { BUFFER_GOAL } from '@/data/mock';
-import { bufferOf } from '@/lib/budget';
+import { bufferOf, combinedIncome } from '@/lib/budget';
 import { formatAmount, progressOf } from '@/lib/money';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
 export function DreamBufferCard() {
   const { month } = useBudget();
-  const buffer = bufferOf(month.income, month.limits);
+  const buffer = bufferOf(combinedIncome(month.incomes), month.limits);
   const target = BUFFER_GOAL.target;
   const progress = progressOf(buffer, target);
   const percent = Math.round(progress * 100);

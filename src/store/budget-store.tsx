@@ -17,18 +17,14 @@
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react';
 
 import type { EnvelopeId } from '@/constants/envelopes';
-import {
-  MOCK_EXPENSES,
-  MOCK_HOUSEHOLD,
-  MOCK_MONTH,
-  type Expense,
-  type Household,
-  type MonthPlan,
-} from '@/data/mock';
-import { totalLimits } from '@/lib/budget';
+import { MOCK_EXPENSES, MOCK_HOUSEHOLD, MOCK_MEMBERS, MOCK_MONTH } from '@/data/mock';
+import type { Expense, Household, Member, MemberId, MonthPlan } from '@/domain/types';
+import { combinedIncome, totalLimits } from '@/lib/budget';
 
 export interface BudgetState {
   household: Household;
+  /** Exactly two partners. */
+  members: Member[];
   month: MonthPlan;
   expenses: Expense[];
 }
@@ -40,7 +36,8 @@ export interface BudgetActions {
   addExpense: (expense: Expense) => void;
   updateExpense: (id: string, patch: ExpensePatch) => void;
   deleteExpense: (id: string) => void;
-  setIncome: (income: number) => void;
+  /** Changes one partner's income only; the other one is untouched. */
+  setMemberIncome: (memberId: MemberId, income: number) => void;
   setLimit: (envelopeId: EnvelopeId, amount: number) => void;
   lockPlan: () => void;
   unlockPlan: () => void;
@@ -50,7 +47,7 @@ type BudgetAction =
   | { type: 'addExpense'; expense: Expense }
   | { type: 'updateExpense'; id: string; patch: ExpensePatch }
   | { type: 'deleteExpense'; id: string }
-  | { type: 'setIncome'; income: number }
+  | { type: 'setMemberIncome'; memberId: MemberId; income: number }
   | { type: 'setLimit'; envelopeId: EnvelopeId; amount: number }
   | { type: 'lockPlan' }
   | { type: 'unlockPlan' };
@@ -58,7 +55,12 @@ type BudgetAction =
 /** The starting point until real data arrives. */
 export const INITIAL_BUDGET_STATE: BudgetState = {
   household: MOCK_HOUSEHOLD,
-  month: { ...MOCK_MONTH, limits: { ...MOCK_MONTH.limits } },
+  members: [...MOCK_MEMBERS],
+  month: {
+    ...MOCK_MONTH,
+    incomes: { ...MOCK_MONTH.incomes },
+    limits: { ...MOCK_MONTH.limits },
+  },
   expenses: MOCK_EXPENSES,
 };
 
@@ -98,8 +100,20 @@ function budgetReducer(state: BudgetState, action: BudgetAction): BudgetState {
       };
     }
 
-    case 'setIncome': {
-      return { ...state, month: { ...state.month, income: wholePkr(action.income) } };
+    case 'setMemberIncome': {
+      // Only an existing member can be updated, and only their own row: the
+      // other partner's income is a separate entry and is never touched.
+      if (!state.members.some((member) => member.id === action.memberId)) return state;
+      return {
+        ...state,
+        month: {
+          ...state.month,
+          incomes: {
+            ...state.month.incomes,
+            [action.memberId]: wholePkr(action.income),
+          },
+        },
+      };
     }
 
     case 'setLimit': {
@@ -114,8 +128,9 @@ function budgetReducer(state: BudgetState, action: BudgetAction): BudgetState {
 
     case 'lockPlan': {
       // A plan can never be locked while the envelopes add up to more than the
-      // income — the screen disables the button, the reducer enforces it.
-      if (totalLimits(state.month.limits) > state.month.income) return state;
+      // combined income — the screen disables the button, the reducer enforces
+      // it against the derived total.
+      if (totalLimits(state.month.limits) > combinedIncome(state.month.incomes)) return state;
       return { ...state, month: { ...state.month, locked: true } };
     }
 
@@ -141,7 +156,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       addExpense: (expense) => dispatch({ type: 'addExpense', expense }),
       updateExpense: (id, patch) => dispatch({ type: 'updateExpense', id, patch }),
       deleteExpense: (id) => dispatch({ type: 'deleteExpense', id }),
-      setIncome: (income) => dispatch({ type: 'setIncome', income }),
+      setMemberIncome: (memberId, income) =>
+        dispatch({ type: 'setMemberIncome', memberId, income }),
       setLimit: (envelopeId, amount) => dispatch({ type: 'setLimit', envelopeId, amount }),
       lockPlan: () => dispatch({ type: 'lockPlan' }),
       unlockPlan: () => dispatch({ type: 'unlockPlan' }),

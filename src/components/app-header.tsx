@@ -12,6 +12,7 @@ import { Animated, Text, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 import { useHeartbeat, usePulse } from '@/components/ui/motion';
+import type { Member } from '@/domain/types';
 import { monthLabelOf } from '@/lib/month';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
@@ -105,7 +106,7 @@ function Avatar({
   );
 }
 
-function SyncPill() {
+function SyncPill({ members }: { members: readonly Member[] }) {
   const pulse = usePulse();
   const dotScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] });
   const dotOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.45] });
@@ -125,8 +126,15 @@ function SyncPill() {
       }}
     >
       <View style={{ flexDirection: 'row' }}>
-        <Avatar letter="H" background={colors.ink} color={colors.cream} />
-        <Avatar letter="W" background={colors.rose} color={colors.surface} style={{ marginLeft: -8 }} />
+        {members.map((member, index) => (
+          <Avatar
+            key={member.id}
+            letter={member.displayName.charAt(0)}
+            background={member.colorKey === 'ink' ? colors.ink : colors.rose}
+            color={member.colorKey === 'ink' ? colors.cream : colors.surface}
+            style={index > 0 ? { marginLeft: -8 } : undefined}
+          />
+        ))}
       </View>
       <Animated.View
         style={{
@@ -153,7 +161,7 @@ function SyncPill() {
 }
 
 export function AppHeader() {
-  const { household, month } = useBudget();
+  const { household, members, month } = useBudget();
   const monthName = monthLabelOf(month.id).split(' ')[0] ?? '';
 
   return (
@@ -193,7 +201,7 @@ export function AppHeader() {
         </View>
       </View>
 
-      <SyncPill />
+      <SyncPill members={members} />
     </View>
   );
 }

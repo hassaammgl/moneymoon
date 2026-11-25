@@ -5,48 +5,37 @@
  * live data later is a matter of replacing the import — not reshaping the
  * screens. The store (`src/store/budget-store.tsx`) is the only reader.
  *
- * Money is always integer PKR.
+ * Money is always integer PKR. Ids are UUID v4 strings, same as the server will
+ * use, so seeded rows and device-created rows look identical.
  */
 
 import { ENVELOPES, type EnvelopeId } from '@/constants/envelopes';
-
-export type Payer = 'husband' | 'wife';
-
-/** `households/{id}/months/{yyyy-mm}/expenses/{id}` */
-export interface Expense {
-  id: string;
-  /** Whole PKR. */
-  amount: number;
-  paidBy: Payer;
-  envelopeId: EnvelopeId;
-  note: string;
-  /** ISO 8601 timestamp. */
-  createdAt: string;
-  createdByUid: string;
-}
-
-/** `households/{id}` */
-export interface Household {
-  id: string;
-  name: string;
-  /** Short code the partner types to join. */
-  code: string;
-}
-
-/** `households/{id}/months/{yyyy-mm}` */
-export interface MonthPlan {
-  id: string;
-  income: number;
-  locked: boolean;
-  /** One limit per envelope. */
-  limits: Record<EnvelopeId, number>;
-}
+import type { DreamGoal, Expense, Household, Member, MonthPlan } from '@/domain/types';
 
 export const MOCK_HOUSEHOLD: Household = {
-  id: 'demo-household',
+  id: 'd3f2e4a6-7b8c-4d9e-8f0a-2b3c4d5e6f70',
   name: 'Moneymoon',
   code: 'MNY-4821',
 };
+
+/** Exactly two partners, in household order: husband first, wife second. */
+export const MOCK_MEMBERS: readonly Member[] = [
+  {
+    id: 'b1f0c2d4-5e6a-4b7c-8d9e-0f1a2b3c4d5e',
+    householdId: MOCK_HOUSEHOLD.id,
+    displayName: 'Husband',
+    colorKey: 'ink',
+  },
+  {
+    id: 'c2e1d3f5-6a7b-4c8d-9e0f-1a2b3c4d5e6f',
+    householdId: MOCK_HOUSEHOLD.id,
+    displayName: 'Wife',
+    colorKey: 'rose',
+  },
+];
+
+const HUSBAND = MOCK_MEMBERS[0].id;
+const WIFE = MOCK_MEMBERS[1].id;
 
 /** Default limits, keyed by envelope id — these are the values the plan starts from. */
 export const DEFAULT_LIMITS: Record<EnvelopeId, number> = ENVELOPES.reduce(
@@ -54,9 +43,16 @@ export const DEFAULT_LIMITS: Record<EnvelopeId, number> = ENVELOPES.reduce(
   {} as Record<EnvelopeId, number>,
 );
 
+/**
+ * November's plan. Income is per partner — 38,000 + 22,000 — and the household
+ * total (60,000) is always derived, never stored.
+ */
 export const MOCK_MONTH: MonthPlan = {
   id: '2026-11',
-  income: 60_000,
+  incomes: {
+    [HUSBAND]: 38_000,
+    [WIFE]: 22_000,
+  },
   locked: false,
   limits: DEFAULT_LIMITS,
 };
@@ -73,76 +69,76 @@ const minutesAgo = (minutes: number) =>
  */
 export const MOCK_EXPENSES: Expense[] = [
   {
-    id: 'exp-1',
+    id: '1e4b7a20-9c3d-4f5a-8b6c-0d1e2f3a4b5c',
     amount: 1_730,
-    paidBy: 'husband',
+    paidBy: HUSBAND,
     envelopeId: 'groceries',
     note: 'Weekly groceries',
     createdAt: minutesAgo(120),
-    createdByUid: 'uid-husband',
+    createdBy: HUSBAND,
   },
   {
-    id: 'exp-2',
+    id: '2f5c8b31-0d4e-4a6b-9c7d-1e2f3a4b5c6d',
     amount: 300,
-    paidBy: 'wife',
+    paidBy: WIFE,
     envelopeId: 'medicine',
     note: 'Pharmacy',
     createdAt: minutesAgo(60 * 26),
-    createdByUid: 'uid-wife',
+    createdBy: WIFE,
   },
   {
-    id: 'exp-3',
+    id: '3a6d9c42-1e5f-4b7c-8d9e-2f3a4b5c6d7e',
     amount: 600,
-    paidBy: 'husband',
+    paidBy: HUSBAND,
     envelopeId: 'commute',
     note: 'Rickshaw to office',
     createdAt: minutesAgo(60 * 24 * 3),
-    createdByUid: 'uid-husband',
+    createdBy: HUSBAND,
   },
   {
-    id: 'exp-4',
+    id: '4b7e0d53-2f6a-4c8d-9e0f-3a4b5c6d7e8f',
     amount: 5_030,
-    paidBy: 'wife',
+    paidBy: WIFE,
     envelopeId: 'internet',
     note: 'Internet & mobile bill',
     createdAt: minutesAgo(60 * 24 * 4),
-    createdByUid: 'uid-wife',
+    createdBy: WIFE,
   },
   {
-    id: 'exp-5',
+    id: '5c8f1e64-3a7b-4d9e-8f0a-4b5c6d7e8f90',
     amount: 900,
-    paidBy: 'wife',
+    paidBy: WIFE,
     envelopeId: 'her-kharcha',
     note: 'Salon',
     createdAt: minutesAgo(60 * 24 * 5),
-    createdByUid: 'uid-wife',
+    createdBy: WIFE,
   },
   {
-    id: 'exp-6',
+    id: '6d902f75-4b8c-4e0f-9a1b-5c6d7e8f9012',
     amount: 18_000,
-    paidBy: 'husband',
+    paidBy: HUSBAND,
     envelopeId: 'room-rent',
     note: 'Room rent',
     createdAt: minutesAgo(60 * 24 * 6),
-    createdByUid: 'uid-husband',
+    createdBy: HUSBAND,
   },
   {
-    id: 'exp-7',
+    id: '7e013086-5c9d-4f1a-8b2c-6d7e8f901234',
     amount: 970,
-    paidBy: 'husband',
+    paidBy: HUSBAND,
     envelopeId: 'utilities',
     note: 'Electricity bill',
     createdAt: minutesAgo(60 * 24 * 8),
-    createdByUid: 'uid-husband',
+    createdBy: HUSBAND,
   },
 ];
 
 /**
  * The emergency buffer is not part of the brief's data model — the dashboard
- * card is designed with a fixed goal, so it lives here until we decide whether
- * it becomes real household data.
+ * card is designed with a fixed goal, so it lives here until real dream-goal
+ * contributions exist.
  */
-export const BUFFER_GOAL = {
+export const BUFFER_GOAL: DreamGoal = {
   target: 50_000,
   byLabel: 'Jun 2027',
 };

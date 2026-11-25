@@ -16,7 +16,7 @@ import { PlanEnvelopeRow } from '@/components/plan-envelope-row';
 import { Card } from '@/components/ui/card';
 import { Money } from '@/components/ui/money';
 import { ENVELOPES } from '@/constants/envelopes';
-import { bufferOf, spentByEnvelope, totalLimits } from '@/lib/budget';
+import { bufferOf, combinedIncome, spentByEnvelope, totalLimits } from '@/lib/budget';
 import { formatAmount } from '@/lib/money';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
@@ -63,7 +63,7 @@ export default function PlanScreen() {
   const { month, expenses, setLimit, lockPlan, unlockPlan } = useBudget();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const income = month.income;
+  const income = combinedIncome(month.incomes);
   const limits = month.limits;
   const locked = month.locked;
   const spent = spentByEnvelope(expenses);

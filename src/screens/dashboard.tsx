@@ -17,19 +17,12 @@ import { DreamBufferCard } from '@/components/dream-buffer-card';
 import { EnvelopeGrid } from '@/components/envelope-grid';
 import { HeroCard } from '@/components/hero-card';
 import { RecentList } from '@/components/recent-list';
-import { MOCK_EXPENSES, type Expense } from '@/data/mock';
 import { colors } from '@/theme';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [expenses, setExpenses] = useState<Expense[]>(MOCK_EXPENSES);
-
-  const handleSave = (expense: Expense) => {
-    setExpenses((current) => [expense, ...current]);
-    setSheetOpen(false);
-  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
@@ -51,10 +44,10 @@ export default function DashboardScreen() {
             }}
           >
             <AppHeader />
-            <HeroCard expenses={expenses} />
+            <HeroCard />
             <DreamBufferCard />
-            <EnvelopeGrid expenses={expenses} />
-            <RecentList expenses={expenses} />
+            <EnvelopeGrid />
+            <RecentList />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -65,11 +58,7 @@ export default function DashboardScreen() {
         onAddPress={() => setSheetOpen(true)}
       />
 
-      <AddExpenseSheet
-        visible={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        onSave={handleSave}
-      />
+      <AddExpenseSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} />
     </View>
   );
 }

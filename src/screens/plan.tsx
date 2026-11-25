@@ -4,19 +4,19 @@
  * Step 13a: back header + plum summary card (income, split bar, envelopes and
  * buffer totals). Steps 13b/13c add the envelope rows and the lock button.
  */
-import { Check, ChevronLeft, Lock } from 'lucide-react-native';
+import { ChevronLeft, Lock, Unlock } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomNav, BOTTOM_NAV_SPACE } from '@/components/bottom-nav';
 import { PlanEnvelopeRow } from '@/components/plan-envelope-row';
 import { Card } from '@/components/ui/card';
 import { Money } from '@/components/ui/money';
-import { ENVELOPES, type EnvelopeId } from '@/constants/envelopes';
-import { MOCK_MONTH } from '@/data/mock';
+import { ENVELOPES } from '@/constants/envelopes';
 import { bufferOf, totalLimits } from '@/lib/budget';
+import { formatAmount } from '@/lib/money';
+import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
 function LegendRow({
@@ -58,13 +58,16 @@ function LegendRow({
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { month, setLimit, lockPlan, unlockPlan } = useBudget();
 
-  const income = MOCK_MONTH.income;
-  const [limits, setLimits] = useState<Record<EnvelopeId, number>>(MOCK_MONTH.limits);
-  const [locked, setLocked] = useState(false);
+  const income = month.income;
+  const limits = month.limits;
+  const locked = month.locked;
   const inEnvelopes = totalLimits(limits);
   const buffer = bufferOf(income, limits);
   const envelopeShare = income > 0 ? Math.min(1, inEnvelopes / income) : 0;
+  const overBy = Math.max(0, inEnvelopes - income);
+  const lockDisabled = !locked && overBy > 0;
 
   const goHome = () => {
     if (router.canGoBack()) {
@@ -72,6 +75,18 @@ export default function PlanScreen() {
     } else {
       router.replace('/');
     }
+  };
+
+  const handleLockPress = () => {
+    if (!locked) {
+      lockPlan();
+      return;
+    }
+
+    Alert.alert('Unlock this plan?', 'You can change the envelope limits again.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Unlock', onPress: unlockPlan },
+    ]);
   };
 
   return (
@@ -185,9 +200,8 @@ export default function PlanScreen() {
                   key={envelope.id}
                   envelope={envelope}
                   limit={limits[envelope.id]}
-                  onChange={(value) =>
-                    setLimits((current) => ({ ...current, [envelope.id]: value }))
-                  }
+                  disabled={locked}
+                  onChange={(value) => setLimit(envelope.id, value)}
                 />
               ))}
             </View>
@@ -195,10 +209,10 @@ export default function PlanScreen() {
             <View style={{ gap: 8 }}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={locked ? 'Plan locked' : 'Lock in our plan'}
-                accessibilityState={{ disabled: locked }}
-                disabled={locked}
-                onPress={() => setLocked(true)}
+                accessibilityLabel={locked ? 'Unlock to edit' : 'Lock in our plan'}
+                accessibilityState={{ disabled: lockDisabled }}
+                disabled={lockDisabled}
+                onPress={handleLockPress}
                 style={{
                   minHeight: 54,
                   borderRadius: 999,
@@ -207,10 +221,11 @@ export default function PlanScreen() {
                   justifyContent: 'center',
                   gap: 8,
                   backgroundColor: locked ? colors['emerald-soft'] : colors['emerald-ink'],
+                  opacity: lockDisabled ? 0.45 : 1,
                 }}
               >
                 {locked ? (
-                  <Check size={18} color={colors['emerald-ink']} strokeWidth={2.4} />
+                  <Unlock size={18} color={colors['emerald-ink']} strokeWidth={2} />
                 ) : (
                   <Lock size={18} color={colors.cream} strokeWidth={2} />
                 )}
@@ -222,7 +237,7 @@ export default function PlanScreen() {
                     color: locked ? colors['emerald-ink'] : colors.cream,
                   }}
                 >
-                  {locked ? 'Plan locked' : 'Lock in our plan'}
+                  {locked ? 'Unlock to edit' : 'Lock in our plan'}
                 </Text>
               </Pressable>
 
@@ -232,12 +247,15 @@ export default function PlanScreen() {
                   fontSize: 12,
                   lineHeight: 17,
                   textAlign: 'center',
-                  color: colors['ink-muted'],
+                  color:
+                    overBy > 0 && !locked ? colors['rose-ink'] : colors['ink-muted'],
                 }}
               >
                 {locked
                   ? "November's limits are locked for both of you."
-                  : 'Locks these limits for November for both of you.'}
+                  : overBy > 0
+                    ? `Envelopes are Rs ${formatAmount(overBy)} over your income`
+                    : 'Locks these limits for November for both of you.'}
               </Text>
             </View>
           </View>

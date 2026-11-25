@@ -1,7 +1,7 @@
 /**
  * HeroCard — the plum headline card on the dashboard (v2).
  *
- * Everything shown is computed from the mock month: income, total spend, what
+ * Everything shown is computed from the shared month: income, total spend, what
  * is left, and the buffer that never entered an envelope.
  */
 import { Text, View } from 'react-native';
@@ -9,9 +9,9 @@ import { Text, View } from 'react-native';
 import { Card } from '@/components/ui/card';
 import { Money } from '@/components/ui/money';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { MOCK_EXPENSES, MOCK_MONTH, type Expense } from '@/data/mock';
 import { bufferOf, leftOf, totalSpent } from '@/lib/budget';
 import { formatAmount } from '@/lib/money';
+import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
 function StatBox({
@@ -48,11 +48,12 @@ function StatBox({
   );
 }
 
-export function HeroCard({ expenses = MOCK_EXPENSES }: { expenses?: readonly Expense[] }) {
-  const income = MOCK_MONTH.income;
+export function HeroCard() {
+  const { month, expenses } = useBudget();
+  const income = month.income;
   const spent = totalSpent(expenses);
   const left = leftOf(income, expenses);
-  const buffer = bufferOf(income, MOCK_MONTH.limits);
+  const buffer = bufferOf(income, month.limits);
   const used = income > 0 ? spent / income : 0;
 
   return (

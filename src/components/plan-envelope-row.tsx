@@ -20,9 +20,16 @@ export interface PlanEnvelopeRowProps {
   envelope: Envelope;
   limit: number;
   onChange: (limit: number) => void;
+  /** True while the month is locked: slider and both buttons stop. */
+  disabled?: boolean;
 }
 
-export function PlanEnvelopeRow({ envelope, limit, onChange }: PlanEnvelopeRowProps) {
+export function PlanEnvelopeRow({
+  envelope,
+  limit,
+  onChange,
+  disabled = false,
+}: PlanEnvelopeRowProps) {
   const isHers = envelope.isHers;
   const max = envelope.limit * 2;
   const accent = isHers ? colors.rose : colors.emerald;
@@ -79,7 +86,8 @@ export function PlanEnvelopeRow({ envelope, limit, onChange }: PlanEnvelopeRowPr
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Decrease ${envelope.name} limit`}
-          disabled={limit <= 0}
+          accessibilityState={{ disabled }}
+          disabled={disabled || limit <= 0}
           onPress={() => onChange(clamp(limit - BUTTON_STEP))}
           style={{
             width: 44,
@@ -90,7 +98,7 @@ export function PlanEnvelopeRow({ envelope, limit, onChange }: PlanEnvelopeRowPr
             justifyContent: 'center',
             backgroundColor: colors.surface,
             borderColor: isHers ? colors['rose-line'] : colors['chip-border'],
-            opacity: limit <= 0 ? 0.4 : 1,
+            opacity: disabled || limit <= 0 ? 0.4 : 1,
           }}
         >
           <Minus size={18} color={accentInk} strokeWidth={2.2} />
@@ -101,18 +109,21 @@ export function PlanEnvelopeRow({ envelope, limit, onChange }: PlanEnvelopeRowPr
           minimumValue={0}
           maximumValue={max}
           step={SLIDER_STEP}
+          disabled={disabled}
           onValueChange={(value) => onChange(clamp(value))}
           minimumTrackTintColor={accent}
           maximumTrackTintColor={colors.track}
           thumbTintColor={accent}
           accessibilityLabel={`${envelope.name} limit`}
-          style={{ flex: 1, height: 44 }}
+          accessibilityState={{ disabled }}
+          style={{ flex: 1, height: 44, opacity: disabled ? 0.5 : 1 }}
         />
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Increase ${envelope.name} limit`}
-          disabled={limit >= max}
+          accessibilityState={{ disabled }}
+          disabled={disabled || limit >= max}
           onPress={() => onChange(clamp(limit + BUTTON_STEP))}
           style={{
             width: 44,
@@ -123,7 +134,7 @@ export function PlanEnvelopeRow({ envelope, limit, onChange }: PlanEnvelopeRowPr
             justifyContent: 'center',
             backgroundColor: colors.surface,
             borderColor: isHers ? colors['rose-line'] : colors['chip-border'],
-            opacity: limit >= max ? 0.4 : 1,
+            opacity: disabled || limit >= max ? 0.4 : 1,
           }}
         >
           <Plus size={18} color={accentInk} strokeWidth={2.2} />

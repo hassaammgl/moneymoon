@@ -12,8 +12,8 @@ import { Animated, Text, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 import { useHeartbeat, usePulse } from '@/components/ui/motion';
-import { MOCK_HOUSEHOLD, MOCK_MONTH } from '@/data/mock';
 import { monthLabelOf } from '@/lib/month';
+import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
 const HEART_PATH =
@@ -153,7 +153,8 @@ function SyncPill() {
 }
 
 export function AppHeader() {
-  const monthName = monthLabelOf(MOCK_MONTH.id).split(' ')[0] ?? '';
+  const { household, month } = useBudget();
+  const monthName = monthLabelOf(month.id).split(' ')[0] ?? '';
 
   return (
     <View
@@ -176,7 +177,7 @@ export function AppHeader() {
               color: colors.ink,
             }}
           >
-            {MOCK_HOUSEHOLD.name}
+            {household.name}
           </Text>
           <Text
             numberOfLines={1}

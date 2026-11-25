@@ -24,8 +24,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ENVELOPES, type EnvelopeId } from '@/constants/envelopes';
-import type { Expense, Payer } from '@/data/mock';
+import type { Payer } from '@/data/mock';
 import { formatAmount, parseAmountInput } from '@/lib/money';
+import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
 const QUICK_AMOUNTS = [100, 500, 1_000] as const;
@@ -47,11 +48,11 @@ const CATEGORY_LABEL: Record<EnvelopeId, string> = ENVELOPES.reduce(
 export interface AddExpenseSheetProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (expense: Expense) => void;
 }
 
-export function AddExpenseSheet({ visible, onClose, onSave }: AddExpenseSheetProps) {
+export function AddExpenseSheet({ visible, onClose }: AddExpenseSheetProps) {
   const insets = useSafeAreaInsets();
+  const { addExpense } = useBudget();
   const [amount, setAmount] = useState(0);
   const [paidBy, setPaidBy] = useState<Payer>('wife');
   const [category, setCategory] = useState<EnvelopeId>('groceries');
@@ -60,7 +61,7 @@ export function AddExpenseSheet({ visible, onClose, onSave }: AddExpenseSheetPro
   const handleSave = () => {
     if (amount <= 0) return;
 
-    onSave({
+    addExpense({
       id: `exp-${Date.now()}`,
       amount,
       paidBy,
@@ -74,6 +75,7 @@ export function AddExpenseSheet({ visible, onClose, onSave }: AddExpenseSheetPro
     setPaidBy('wife');
     setCategory('groceries');
     setNote('');
+    onClose();
   };
 
   return (

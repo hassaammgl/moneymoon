@@ -5,14 +5,11 @@ import { Text, View } from 'react-native';
 
 import { ExpenseRow } from '@/components/expense-row';
 import { Card } from '@/components/ui/card';
-import type { Expense } from '@/data/mock';
+import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
-export interface RecentListProps {
-  expenses: readonly Expense[];
-}
-
-export function RecentList({ expenses }: RecentListProps) {
+export function RecentList() {
+  const { expenses } = useBudget();
   const recent = [...expenses]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 4);

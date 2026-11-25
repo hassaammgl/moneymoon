@@ -8,13 +8,15 @@ import { Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/card';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { BUFFER_GOAL, MOCK_MONTH } from '@/data/mock';
+import { BUFFER_GOAL } from '@/data/mock';
 import { bufferOf } from '@/lib/budget';
 import { formatAmount, progressOf } from '@/lib/money';
+import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
 export function DreamBufferCard() {
-  const buffer = bufferOf(MOCK_MONTH.income, MOCK_MONTH.limits);
+  const { month } = useBudget();
+  const buffer = bufferOf(month.income, month.limits);
   const target = BUFFER_GOAL.target;
   const progress = progressOf(buffer, target);
   const percent = Math.round(progress * 100);

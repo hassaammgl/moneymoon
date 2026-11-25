@@ -8,8 +8,8 @@ import { Pressable, Text, View } from 'react-native';
 
 import { EnvelopeCard } from '@/components/envelope-card';
 import { ENVELOPE_GROUPS, type EnvelopeGroupId } from '@/constants/envelopes';
-import { MOCK_EXPENSES, MOCK_MONTH, type Expense } from '@/data/mock';
 import { limitsByGroup, spentByGroup } from '@/lib/budget';
+import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
 const GROUP_LABEL: Record<EnvelopeGroupId, string> = {
@@ -21,12 +21,12 @@ const GROUP_LABEL: Record<EnvelopeGroupId, string> = {
 
 export interface EnvelopeGridProps {
   onEditPlan?: () => void;
-  expenses?: readonly Expense[];
 }
 
-export function EnvelopeGrid({ onEditPlan, expenses = MOCK_EXPENSES }: EnvelopeGridProps) {
+export function EnvelopeGrid({ onEditPlan }: EnvelopeGridProps) {
+  const { month, expenses } = useBudget();
   const spent = spentByGroup(expenses);
-  const limits = limitsByGroup(MOCK_MONTH.limits);
+  const limits = limitsByGroup(month.limits);
   const rows = [ENVELOPE_GROUPS.slice(0, 2), ENVELOPE_GROUPS.slice(2)];
 
   return (

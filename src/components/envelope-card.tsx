@@ -11,6 +11,7 @@ import { Text, View } from 'react-native';
 import { Card } from '@/components/ui/card';
 import { Money } from '@/components/ui/money';
 import { ProgressBar } from '@/components/ui/progress-bar';
+import { statusOf } from '@/lib/budget';
 import { formatAmount, progressOf } from '@/lib/money';
 import { colors, fonts } from '@/theme';
 
@@ -35,6 +36,8 @@ export function EnvelopeCard({
   const isRose = tone === 'rose';
   const left = limit - spent;
   const progress = progressOf(spent, limit);
+  const isOver = statusOf(spent, limit) === 'over';
+  const barColor = isRose || isOver ? colors.rose : colors.emerald;
 
   return (
     <Card radius={20} padding={14} style={{ flex: 1 }}>
@@ -69,7 +72,12 @@ export function EnvelopeCard({
         {name}
       </Text>
 
-      <Money amount={left} size="md" style={{ marginTop: 2 }} />
+      <Money
+        amount={left}
+        size="md"
+        color={isOver ? colors['rose-ink'] : colors.ink}
+        style={{ marginTop: 2 }}
+      />
 
       <Text
         numberOfLines={1}
@@ -87,7 +95,7 @@ export function EnvelopeCard({
       <ProgressBar
         value={progress}
         height={6}
-        color={isRose ? colors.rose : colors.emerald}
+        color={barColor}
         accessibilityLabel={`${name}: ${Math.round(progress * 100)} percent spent`}
         style={{ marginTop: 10 }}
       />

@@ -6,9 +6,11 @@
  */
 import { ChevronLeft, Lock, Unlock } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AddExpenseSheet } from '@/components/add-expense-sheet';
 import { BottomNav, BOTTOM_NAV_SPACE } from '@/components/bottom-nav';
 import { PlanEnvelopeRow } from '@/components/plan-envelope-row';
 import { Card } from '@/components/ui/card';
@@ -59,6 +61,7 @@ export default function PlanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { month, expenses, setLimit, lockPlan, unlockPlan } = useBudget();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const income = month.income;
   const limits = month.limits;
@@ -264,7 +267,13 @@ export default function PlanScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <BottomNav active="plan" onTabPress={(tab) => (tab === 'home' ? goHome() : undefined)} />
+      <BottomNav
+        active="plan"
+        onTabPress={(tab) => (tab === 'home' ? goHome() : undefined)}
+        onAddPress={() => setSheetOpen(true)}
+      />
+
+      <AddExpenseSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} />
     </View>
   );
 }

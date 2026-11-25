@@ -46,7 +46,7 @@ export default function DashboardScreen() {
             <AppHeader />
             <HeroCard />
             <DreamBufferCard />
-            <EnvelopeGrid />
+            <EnvelopeGrid onEditPlan={() => router.push('/plan')} />
             <RecentList />
           </View>
         </ScrollView>

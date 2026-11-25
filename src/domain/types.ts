@@ -50,7 +50,8 @@ export interface MonthPlan {
   limits: Record<EnvelopeId, number>;
 }
 
-/** One logged spend, attributed to the partner who paid. */
+/** One logged spend, attributed to the partner who paid. Identified by a UUID so
+ * an offline retry cannot create the same row twice. */
 export interface Expense {
   /** UUID v4, generated on the device so retries stay idempotent. */
   id: string;
@@ -62,6 +63,18 @@ export interface Expense {
   /** ISO 8601 timestamp. */
   createdAt: string;
   createdBy: MemberId;
+}
+
+/** Fields an expense edit may change; `id` is fixed. */
+export type ExpensePatch = Partial<Omit<Expense, 'id'>>;
+
+/** Everything the app holds for one household and one month. */
+export interface BudgetSnapshot {
+  household: Household;
+  /** Exactly two partners. */
+  members: Member[];
+  month: MonthPlan;
+  expenses: Expense[];
 }
 
 /** The shared savings target behind the Dream Buffer card. */

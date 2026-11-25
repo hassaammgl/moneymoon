@@ -1,0 +1,20 @@
+diff --git a/dist/runtime/components.js b/dist/runtime/components.js
+index 7bb1ae4e2cb50301e5b63687c572509e70c921ba..a217a4e7f95d64f18260a273b961b1bb3680db21 100644
+--- a/dist/runtime/components.js
++++ b/dist/runtime/components.js
+@@ -31,10 +31,11 @@ const api_1 = require("./api");
+     columnWrapperClassName: "columnWrapperStyle",
+     contentContainerClassName: "contentContainerStyle",
+ });
+-(0, api_1.remapProps)(react_native_1.ImageBackground, {
+-    className: "style",
+-    imageClassName: "imageStyle",
+-});
++// Patched for Moneymoon: React Native 0.88 deprecates ImageBackground, and
++// merely reading `react_native_1.ImageBackground` fires a deprecation warning on
++// every launch, even though this app never uses the component. Removed until
++// NativeWind stops remapping it. Drop this patch when the warning is fixed
++// upstream.
+ (0, api_1.remapProps)(react_native_1.KeyboardAvoidingView, {
+     className: "style",
+     contentContainerClassName: "contentContainerStyle",

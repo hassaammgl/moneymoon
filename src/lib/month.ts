@@ -33,6 +33,12 @@ export function monthLabelOf(id: string): string {
   return `${name} ${year}`;
 }
 
+/** `'2026-11'` -> `'2026-11-01'`, the `month_start` date the database stores. */
+export function monthStartOf(id: string): string {
+  const [year, month] = id.split('-');
+  return `${year}-${month}-01`;
+}
+
 /** Whole days remaining in the month, excluding today — 24 Nov -> 6. */
 export function daysLeftInMonth(date: Date): number {
   const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();

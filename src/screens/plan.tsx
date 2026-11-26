@@ -18,6 +18,7 @@ import { Money } from '@/components/ui/money';
 import { ENVELOPES } from '@/constants/envelopes';
 import { bufferOf, combinedIncome, spentByEnvelope, totalLimits } from '@/lib/budget';
 import { formatAmount } from '@/lib/money';
+import { monthLabelOf } from '@/lib/month';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
@@ -60,7 +61,7 @@ function LegendRow({
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { month, expenses, setLimit, lockPlan, unlockPlan } = useBudget();
+  const { month, expenses, setLimit, lockPlan, unlockPlan, hasBudget } = useBudget();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const income = combinedIncome(month.incomes);
@@ -72,6 +73,7 @@ export default function PlanScreen() {
   const envelopeShare = income > 0 ? Math.min(1, inEnvelopes / income) : 0;
   const overBy = Math.max(0, inEnvelopes - income);
   const lockDisabled = !locked && overBy > 0;
+  const monthName = monthLabelOf(month.id).split(' ')[0] ?? '';
 
   const goHome = () => {
     if (router.canGoBack()) {
@@ -276,11 +278,25 @@ export default function PlanScreen() {
                 }}
               >
                 {locked
-                  ? "November's limits are locked for both of you."
+                  ? `${monthName}'s limits are locked for both of you.`
                   : overBy > 0
                     ? `Envelopes are Rs ${formatAmount(overBy)} over your income`
-                    : 'Locks these limits for November for both of you.'}
+                    : `Locks these limits for ${monthName} for both of you.`}
               </Text>
+
+              {!hasBudget ? (
+                <Text
+                  style={{
+                    fontFamily: fonts.sans,
+                    fontSize: 12,
+                    lineHeight: 17,
+                    textAlign: 'center',
+                    color: colors['ink-muted'],
+                  }}
+                >
+                  {`No plan is saved for ${monthName} yet.`}
+                </Text>
+              ) : null}
             </View>
           </View>
         </ScrollView>

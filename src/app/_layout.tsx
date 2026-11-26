@@ -6,8 +6,9 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { BudgetError, BudgetLoading } from '@/components/budget-gate';
 import { SessionProvider, useSession } from '@/providers/session';
-import { BudgetProvider } from '@/store/budget-store';
+import { BudgetProvider, useBudget } from '@/store/budget-store';
 import { colors, fontAssets } from '@/theme';
 
 import '../../global.css';
@@ -55,12 +56,32 @@ export default function RootLayout() {
  */
 function RootNavigator() {
   const { status, household } = useSession();
+  const budget = useBudget();
 
   if (status === 'loading') {
     return <View style={{ flex: 1, backgroundColor: colors.canvas }} />;
   }
 
   const signedIn = status === 'signedIn';
+  const hasHousehold = signedIn && household !== null;
+
+  // A member's month is loaded before any screen renders, so the budget UI can
+  // never flash zeros, and a failed read gets a message and a retry instead of
+  // an empty dashboard.
+  if (hasHousehold) {
+    if (budget.status === 'error') {
+      return (
+        <BudgetError
+          message={budget.error ?? 'Could not load your budget. Try again.'}
+          onRetry={budget.reload}
+        />
+      );
+    }
+
+    if (budget.status !== 'ready') {
+      return <BudgetLoading />;
+    }
+  }
 
   return (
     <Stack

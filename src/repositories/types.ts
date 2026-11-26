@@ -2,7 +2,7 @@
  * Backend-independent repository contracts.
  *
  * The store talks to these; screens never do, and nothing here imports Supabase.
- * Every method is async so the mock adapter and a future Supabase adapter are
+ * Every method is async so the mock adapter and the Supabase adapter are
  * interchangeable without touching `useBudget()` or any screen.
  *
  * Scope: one household per signed-in session, so reads are month-scoped. Once
@@ -11,6 +11,10 @@
  *
  * Realtime subscriptions and version checks are deliberately absent: they
  * belong to the sync phase, and adding unused seams now would only rot.
+ *
+ * Step 5A reads only: the store loads through the read half. Writes stay on the
+ * mock adapter until the sync phase gives the Supabase adapter real insert /
+ * update methods with error handling and an outbox.
  */
 import type { EnvelopeId } from '@/constants/envelopes';
 import type {
@@ -22,7 +26,6 @@ import type {
   Member,
   MemberId,
   MonthId,
-  MonthPlan,
 } from '@/domain/types';
 
 export interface HouseholdRepository {
@@ -37,8 +40,21 @@ export interface IncomeRepository {
   set(memberId: MemberId, monthId: MonthId, amountPkr: number): Promise<number>;
 }
 
+/**
+ * The month's budget row plus its envelope limits.
+ *
+ * `id` is `null` when the household has no budget row for that month yet, which
+ * is the normal state for a household that has never saved a plan. Callers must
+ * treat that as "no plan", never as zero saved values.
+ */
+export interface MonthBudget {
+  id: string | null;
+  locked: boolean;
+  limits: Record<EnvelopeId, number>;
+}
+
 export interface BudgetRepository {
-  getMonth(monthId: MonthId): Promise<MonthPlan>;
+  getMonth(monthId: MonthId): Promise<MonthBudget>;
   /** Resolves with the stored limit (whole PKR, >= 0). */
   setLimit(monthId: MonthId, envelopeId: EnvelopeId, amountPkr: number): Promise<number>;
   /** Returns whether the plan is locked afterwards; refuses while over income. */
@@ -47,6 +63,7 @@ export interface BudgetRepository {
 }
 
 export interface ExpenseRepository {
+  /** Expenses of the budget row that owns `monthId`; other months never leak. */
   list(monthId: MonthId): Promise<Expense[]>;
   /** `expense.id` is the idempotency key, minted on the device. */
   create(expense: Expense): Promise<Expense>;
@@ -66,4 +83,16 @@ export interface Repositories {
   budget: BudgetRepository;
   expenses: ExpenseRepository;
   dreamGoal: DreamGoalRepository;
+}
+
+/**
+ * The read half of each repository — what Step 5A loads through. A backend that
+ * only supports reads (this step) can implement this without stubbing writes.
+ */
+export interface ReadRepositories {
+  household: Pick<HouseholdRepository, 'get' | 'listMembers'>;
+  income: Pick<IncomeRepository, 'listForMonth'>;
+  budget: Pick<BudgetRepository, 'getMonth'>;
+  expenses: Pick<ExpenseRepository, 'list'>;
+  dreamGoal: Pick<DreamGoalRepository, 'get'>;
 }

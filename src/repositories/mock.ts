@@ -70,7 +70,11 @@ export function createMockRepositories(seed: BudgetSnapshot): Repositories {
     },
 
     budget: {
-      getMonth: async () => cloneMonth(state.month),
+      getMonth: async () => ({
+        id: state.month.id,
+        locked: state.month.locked,
+        limits: { ...state.month.limits },
+      }),
       setLimit: async (_monthId, envelopeId, amountPkr) => {
         apply({ type: 'setLimit', envelopeId, amount: amountPkr });
         return state.month.limits[envelopeId];

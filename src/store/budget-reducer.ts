@@ -16,6 +16,7 @@ import type {
 import { combinedIncome, totalLimits } from '@/lib/budget';
 
 export type BudgetAction =
+  | { type: 'replace'; snapshot: BudgetSnapshot }
   | { type: 'addExpense'; expense: Expense }
   | { type: 'updateExpense'; id: string; patch: ExpensePatch }
   | { type: 'deleteExpense'; id: string }
@@ -36,6 +37,13 @@ function withWholePkr(expense: Expense): Expense {
 
 export function budgetReducer(state: BudgetSnapshot, action: BudgetAction): BudgetSnapshot {
   switch (action.type) {
+    case 'replace': {
+      // A fresh read from the backend always wins: screens keep their own
+      // optimistic edits until the next load, and there is no merging that
+      // could resurrect a stale mock value.
+      return action.snapshot;
+    }
+
     case 'addExpense': {
       const expense = withWholePkr(action.expense);
       if (expense.amount <= 0) return state;

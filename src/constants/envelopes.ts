@@ -174,6 +174,19 @@ export function getGroup(id: EnvelopeGroupId): EnvelopeGroup {
   return group;
 }
 
+/** Every envelope at zero — the shape a month has before any limits are saved. */
+export function emptyLimits(): Record<EnvelopeId, number> {
+  return ENVELOPES.reduce(
+    (limits, envelope) => ({ ...limits, [envelope.id]: 0 }),
+    {} as Record<EnvelopeId, number>,
+  );
+}
+
+/** True when `value` is one of the seven envelope ids the database allows. */
+export function isEnvelopeId(value: string): value is EnvelopeId {
+  return ENVELOPES.some((envelope) => envelope.id === value);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Tones                                                                      */
 /* -------------------------------------------------------------------------- */

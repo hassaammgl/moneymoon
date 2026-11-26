@@ -4,7 +4,7 @@
  * Step 13a: back header + plum summary card (income, split bar, envelopes and
  * buffer totals). Steps 13b/13c add the envelope rows and the lock button.
  */
-import { ChevronLeft, Lock, Unlock } from 'lucide-react-native';
+import { ChevronLeft, Lock, Unlock, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
@@ -141,6 +141,25 @@ export default function PlanScreen() {
               >
                 Our Plan
               </Text>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Household and account"
+                hitSlop={8}
+                onPress={() => router.push('/household')}
+                className="bg-surface border-chip-border"
+                style={{
+                  marginLeft: 'auto',
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  borderWidth: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Users size={19} color={colors.ink} strokeWidth={2} />
+              </Pressable>
             </View>
 
             <Card tone="plum" radius={28} padding={20}>

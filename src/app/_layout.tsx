@@ -3,8 +3,10 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { SessionProvider, useSession } from '@/providers/session';
 import { BudgetProvider } from '@/store/budget-store';
 import { colors, fontAssets } from '@/theme';
 
@@ -30,15 +32,57 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <BudgetProvider>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.canvas },
-          }}
-        />
-      </BudgetProvider>
+      <SessionProvider>
+        <BudgetProvider>
+          <StatusBar style="dark" />
+          <RootNavigator />
+        </BudgetProvider>
+      </SessionProvider>
     </SafeAreaProvider>
+  );
+}
+
+/**
+ * The auth gate.
+ *
+ * Three exclusive groups: signed out sees login, signed in without a household
+ * sees onboarding, signed in with a household sees the budget. Expo Router
+ * redirects to the first available screen whenever the active group is closed,
+ * so sign-out and joining need no manual navigation.
+ *
+ * While the session and membership are still resolving we render a plain canvas
+ * instead of the navigator, so no group ever opens on a guess.
+ */
+function RootNavigator() {
+  const { status, household } = useSession();
+
+  if (status === 'loading') {
+    return <View style={{ flex: 1, backgroundColor: colors.canvas }} />;
+  }
+
+  const signedIn = status === 'signedIn';
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.canvas },
+      }}
+    >
+      <Stack.Protected guard={!signedIn}>
+        <Stack.Screen name="login" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={signedIn && household === null}>
+        <Stack.Screen name="onboarding" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={signedIn && household !== null}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="history" />
+        <Stack.Screen name="plan" />
+        <Stack.Screen name="household" />
+      </Stack.Protected>
+    </Stack>
   );
 }

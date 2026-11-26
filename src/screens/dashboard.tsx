@@ -74,7 +74,10 @@ export default function DashboardScreen() {
 
       <BottomNav
         active="home"
-        onTabPress={(tab) => (tab === 'plan' ? router.push('/plan') : undefined)}
+        onTabPress={(tab) => {
+          if (tab === 'plan') router.navigate('/plan');
+          if (tab === 'history') router.navigate('/history');
+        }}
         onAddPress={openNewExpense}
       />
 

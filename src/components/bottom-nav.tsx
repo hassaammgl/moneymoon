@@ -5,13 +5,18 @@
  * (see `BOTTOM_NAV_HEIGHT` + `FAB_OVERHANG`) so nothing scrolls underneath.
  * The FAB is 60px, rose, with a cream ring, and floats above the bar's centre.
  */
-import { CalendarRange, House, Plus } from 'lucide-react-native';
+import {
+  CalendarRange,
+  History as HistoryIcon,
+  House,
+  Plus,
+} from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts } from '@/theme';
 
-export type NavTab = 'home' | 'plan';
+export type NavTab = 'home' | 'plan' | 'history';
 
 /** Height of the tab row, before the safe-area inset. */
 export const BOTTOM_NAV_HEIGHT = 64;
@@ -87,7 +92,8 @@ export function BottomNav({ active = 'home', onTabPress, onAddPress }: BottomNav
             flexDirection: 'row',
             alignItems: 'center',
             height: BOTTOM_NAV_HEIGHT,
-            paddingHorizontal: 24,
+            paddingLeft: 16,
+            paddingRight: 8,
           }}
         >
           <TabItem
@@ -102,29 +108,46 @@ export function BottomNav({ active = 'home', onTabPress, onAddPress }: BottomNav
             active={active === 'plan'}
             onPress={() => onTabPress?.('plan')}
           />
-        </View>
+          <TabItem
+            label="History"
+            icon={HistoryIcon}
+            active={active === 'history'}
+            onPress={() => onTabPress?.('history')}
+          />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Add expense"
-          onPress={onAddPress}
-          style={{
-            position: 'absolute',
-            top: -FAB_OVERHANG,
-            left: '50%',
-            marginLeft: -30,
-            width: 60,
-            height: 60,
-            borderRadius: 30,
-            backgroundColor: colors.rose,
-            borderWidth: 4,
-            borderColor: colors.cream,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Plus size={26} color={colors.surface} strokeWidth={2.4} />
-        </Pressable>
+          {/*
+            The add button keeps its own slot instead of floating over a tab, so
+            adding History does not cover the middle label. It still rises above
+            the bar by ten pixels, and the screens' bottom padding already
+            reserves that overhang.
+          */}
+          <View
+            style={{
+              width: 68,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add expense"
+              onPress={onAddPress}
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: colors.rose,
+                borderWidth: 4,
+                borderColor: colors.cream,
+                alignItems: 'center',
+                justifyContent: 'center',
+                transform: [{ translateY: -10 }],
+              }}
+            >
+              <Plus size={26} color={colors.surface} strokeWidth={2.4} />
+            </Pressable>
+          </View>
+        </View>
       </View>
     </View>
   );

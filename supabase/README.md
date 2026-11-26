@@ -30,7 +30,9 @@ Or paste the files into the dashboard SQL editor in order.
 
 ## Auth
 
-The app signs in with an emailed six-digit code (`signInWithOtp` + `verifyOtp`),
+The app signs in with an emailed one-time code (`signInWithOtp` + `verifyOtp`),
+whose length comes from **Authentication → Providers → Email → Email OTP
+length** (6–10 digits; the app accepts any).
 not a magic link. In the dashboard:
 
 1. **Authentication → Providers → Email** must be enabled (it is by default).

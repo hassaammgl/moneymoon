@@ -1,7 +1,9 @@
 /**
  * Login — email one-time code (no passwords).
  *
- * Step 1 asks for an email, step 2 verifies the six-digit code Supabase emails.
+ * Step 1 asks for an email, step 2 verifies the one-time code Supabase emails.
+ * The project's Email OTP length decides how many digits it is (6 by default,
+ * up to 10), so the field accepts any of them.
  * The Supabase session lives in SessionProvider; on success the root gate moves
  * on by itself, so this screen never navigates manually.
  *
@@ -252,7 +254,7 @@ export default function LoginScreen() {
                         color: colors['ink-muted'],
                       }}
                     >
-                      We email a six-digit code. No password to remember.
+                      We email a sign-in code. No password to remember.
                     </Text>
                   </View>
                 ) : (
@@ -312,10 +314,10 @@ export default function LoginScreen() {
                       <TextInput
                         value={code}
                         onChangeText={(value) => setCode(value.replace(/[^\d]/g, ''))}
-                        placeholder="123456"
+                        placeholder="Code"
                         placeholderTextColor={colors['ink-muted']}
                         keyboardType="number-pad"
-                        maxLength={6}
+                        maxLength={10}
                         returnKeyType="done"
                         onSubmitEditing={verifyCode}
                         accessibilityLabel="Sign-in code"

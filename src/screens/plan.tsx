@@ -304,7 +304,10 @@ export default function PlanScreen() {
 
       <BottomNav
         active="plan"
-        onTabPress={(tab) => (tab === 'home' ? goHome() : undefined)}
+        onTabPress={(tab) => {
+          if (tab === 'home') return goHome();
+          if (tab === 'history') router.push('/history');
+        }}
         onAddPress={() => setSheetOpen(true)}
       />
 

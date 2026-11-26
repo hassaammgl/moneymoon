@@ -32,73 +32,76 @@ export function ExpenseRow({ expense, onPress, showCategory = false }: ExpenseRo
   const payerName = payer?.displayName ?? 'Unknown';
   const payerRose = payer?.colorKey === 'rose';
 
+  // Geometry lives on an inner View: a function `style` on Pressable is not
+  // applied through NativeWind's interop, which left the row stacked as a
+  // column with no padding. The function style now only dims on press.
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={onPress ? `Edit ${expense.note}` : undefined}
       onPress={onPress ? () => onPress(expense) : undefined}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        opacity: pressed && onPress ? 0.55 : 1,
-      })}
+      style={({ pressed }) => ({ opacity: pressed && onPress ? 0.55 : 1 })}
     >
       <View
-        className={isHers ? 'bg-rose-soft' : 'bg-track'}
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 12,
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
+          gap: 12,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
         }}
       >
-        <Icon
-          size={18}
-          color={isHers ? colors['rose-ink'] : colors['ink-muted']}
-          strokeWidth={1.75}
-        />
-      </View>
-
-      <View style={{ flex: 1, flexShrink: 1 }}>
-        <Text
-          numberOfLines={1}
+        <View
+          className={isHers ? 'bg-rose-soft' : 'bg-track'}
           style={{
-            fontFamily: fonts['sans-semibold'],
-            fontSize: 14,
-            lineHeight: 19,
-            color: colors.ink,
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          {expense.note}
-        </Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
-          <Pill
-            label={payerName}
-            tone={payerRose ? 'rose' : 'outline'}
+          <Icon
+            size={18}
+            color={isHers ? colors['rose-ink'] : colors['ink-muted']}
+            strokeWidth={1.75}
           />
+        </View>
+
+        <View style={{ flex: 1, flexShrink: 1 }}>
           <Text
             numberOfLines={1}
             style={{
-              flexShrink: 1,
-              fontFamily: fonts.sans,
-              fontSize: 11,
-              lineHeight: 15,
-              color: colors['ink-muted'],
+              fontFamily: fonts['sans-semibold'],
+              fontSize: 14,
+              lineHeight: 19,
+              color: colors.ink,
             }}
           >
-            {showCategory
-              ? `${envelope.shortName} · ${timeAgo(expense.createdAt)}`
-              : timeAgo(expense.createdAt)}
+            {expense.note}
           </Text>
-        </View>
-      </View>
 
-      <Money amount={expense.amount} size="sm" debit />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
+            <Pill label={payerName} tone={payerRose ? 'rose' : 'outline'} />
+            <Text
+              numberOfLines={1}
+              style={{
+                flexShrink: 1,
+                fontFamily: fonts.sans,
+                fontSize: 11,
+                lineHeight: 15,
+                color: colors['ink-muted'],
+              }}
+            >
+              {showCategory
+                ? `${envelope.shortName} · ${timeAgo(expense.createdAt)}`
+                : timeAgo(expense.createdAt)}
+            </Text>
+          </View>
+        </View>
+
+        <Money amount={expense.amount} size="sm" debit />
+      </View>
     </Pressable>
   );
 }

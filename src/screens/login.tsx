@@ -10,11 +10,10 @@
  * The project's Magic Link email template must include `{{ .Token }}` for the
  * code to be visible. See supabase/README.md.
  */
-import { ArrowLeft, Heart, KeyRound, Mail } from 'lucide-react-native';
+import { ArrowLeft, KeyRound, Mail } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -23,6 +22,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@/components/brand-logo';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/theme';
@@ -107,7 +107,7 @@ export default function LoginScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
         >
           <ScrollView
             keyboardShouldPersistTaps="handled"
@@ -121,18 +121,7 @@ export default function LoginScreen() {
           >
             <View style={{ width: '100%', maxWidth: 460, alignSelf: 'center', gap: 22 }}>
               <View style={{ gap: 14 }}>
-                <View
-                  className="bg-rose-soft"
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 18,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Heart size={24} color={colors.rose} fill={colors.rose} strokeWidth={2} />
-                </View>
+                <BrandLogo size={64} />
 
                 <View style={{ gap: 6 }}>
                   <Text

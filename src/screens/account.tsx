@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AddExpenseSheet } from '@/components/add-expense-sheet';
 import { BottomNav, BOTTOM_NAV_SPACE } from '@/components/bottom-nav';
+import { BrandLogo } from '@/components/brand-logo';
 import { Card } from '@/components/ui/card';
 import { useSession } from '@/providers/session';
 import { useBudget } from '@/store/budget-store';
@@ -227,16 +228,19 @@ export default function AccountScreen() {
                   gap: 12,
                 }}
               >
-                <Text
-                  style={{
-                    fontFamily: fonts.sans,
-                    fontSize: 12,
-                    lineHeight: 17,
-                    color: colors['ink-muted'],
-                  }}
-                >
-                  Moneymoon
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <BrandLogo size={26} />
+                  <Text
+                    style={{
+                      fontFamily: fonts.sans,
+                      fontSize: 12,
+                      lineHeight: 17,
+                      color: colors['ink-muted'],
+                    }}
+                  >
+                    Moneymoon
+                  </Text>
+                </View>
                 <Text
                   style={{
                     fontFamily: fonts['sans-medium'],

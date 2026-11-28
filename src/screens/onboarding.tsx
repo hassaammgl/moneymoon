@@ -8,11 +8,10 @@
  * Codes are 8 characters. The creator shares one from Our Plan → Household after
  * the household exists, so this screen only needs the "join" side of the flow.
  */
-import { ArrowLeft, ChevronRight, HeartHandshake, KeyRound, Plus, Users } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, KeyRound, Plus, Users } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -21,6 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@/components/brand-logo';
 import { Card } from '@/components/ui/card';
 import { createHousehold, householdErrorMessage, joinHousehold } from '@/lib/household';
 import { useSession } from '@/providers/session';
@@ -77,7 +77,7 @@ export default function OnboardingScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
         >
           <ScrollView
             keyboardShouldPersistTaps="handled"
@@ -91,18 +91,7 @@ export default function OnboardingScreen() {
           >
             <View style={{ width: '100%', maxWidth: 460, alignSelf: 'center', gap: 22 }}>
               <View style={{ gap: 14 }}>
-                <View
-                  className="bg-rose-soft"
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 18,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <HeartHandshake size={24} color={colors.rose} strokeWidth={2} />
-                </View>
+                <BrandLogo size={64} />
 
                 <View style={{ gap: 6 }}>
                   <Text

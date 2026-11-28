@@ -12,6 +12,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/ui/card';
+import { BrandLogo } from '@/components/brand-logo';
 import { colors, fonts } from '@/theme';
 
 function Frame({ children }: { children: ReactNode }) {
@@ -37,6 +38,7 @@ export function BudgetLoading() {
   return (
     <Frame>
       <View style={{ alignItems: 'center', gap: 14 }}>
+        <BrandLogo size={72} />
         <ActivityIndicator color={colors.rose} size="large" />
         <Text
           style={{

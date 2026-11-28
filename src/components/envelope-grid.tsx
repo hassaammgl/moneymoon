@@ -7,8 +7,13 @@
 import { Pressable, Text, View } from 'react-native';
 
 import { EnvelopeCard } from '@/components/envelope-card';
-import { ENVELOPE_GROUPS, type EnvelopeGroupId } from '@/constants/envelopes';
-import { limitsByGroup, spentByGroup } from '@/lib/budget';
+import {
+  customEnvelopeView,
+  ENVELOPE_GROUPS,
+  type Envelope,
+  type EnvelopeGroupId,
+} from '@/constants/envelopes';
+import { limitsByGroup, spentByEnvelope, spentByGroup } from '@/lib/budget';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
@@ -24,10 +29,19 @@ export interface EnvelopeGridProps {
 }
 
 export function EnvelopeGrid({ onEditPlan }: EnvelopeGridProps) {
-  const { month, expenses } = useBudget();
+  const { month, expenses, customEnvelopes } = useBudget();
   const spent = spentByGroup(expenses);
+  const perEnvelope = spentByEnvelope(expenses);
   const limits = limitsByGroup(month.limits);
   const rows = [ENVELOPE_GROUPS.slice(0, 2), ENVELOPE_GROUPS.slice(2)];
+
+  // Custom rows are household-wide, so each gets its own card under the four
+  // built-in groups; pairs keep the grid rhythm.
+  const custom = customEnvelopes.map(customEnvelopeView);
+  const customRows: Envelope[][] = [];
+  for (let index = 0; index < custom.length; index += 2) {
+    customRows.push(custom.slice(index, index + 2));
+  }
 
   return (
     <View style={{ gap: 12 }}>
@@ -80,6 +94,25 @@ export function EnvelopeGrid({ onEditPlan }: EnvelopeGridProps) {
               tone={group.id === 'her' ? 'rose' : 'emerald'}
             />
           ))}
+        </View>
+      ))}
+
+      {customRows.map((row) => (
+        <View
+          key={row[0].id}
+          style={{ flexDirection: 'row', alignItems: 'stretch', gap: 12 }}
+        >
+          {row.map((envelope) => (
+            <EnvelopeCard
+              key={envelope.id}
+              name={envelope.shortName}
+              icon={envelope.icon}
+              spent={perEnvelope[envelope.id] ?? 0}
+              limit={month.limits[envelope.id] ?? 0}
+              tone={envelope.tone}
+            />
+          ))}
+          {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
         </View>
       ))}
     </View>

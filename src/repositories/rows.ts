@@ -43,6 +43,13 @@ export interface EnvelopeRow {
   limit_pkr: number;
 }
 
+export interface CustomEnvelopeRow {
+  id: string;
+  name: string;
+  icon: string;
+  tone: string;
+}
+
 export interface ExpenseRow {
   id: string;
   amount_pkr: number;

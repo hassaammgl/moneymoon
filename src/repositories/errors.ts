@@ -109,6 +109,10 @@ export function describeWriteError(error: unknown): string {
     return 'This account cannot change this household.';
   }
 
+  if (/household_envelopes_name_key|duplicate key value/i.test(text)) {
+    return 'An envelope with that name already exists.';
+  }
+
   if (/budget_not_found|no_household/.test(text)) {
     return 'No plan could be created for this month. Pull to refresh and try again.';
   }

@@ -19,11 +19,14 @@
  */
 import {
   emptyLimits,
-  isEnvelopeId,
   type EnvelopeId,
 } from '@/constants/envelopes';
 import type {
+  CustomEnvelope,
   DreamGoal,
+  EnvelopeIcon,
+  EnvelopeLimits,
+  EnvelopeTone,
   Expense,
   ExpensePatch,
   Household,
@@ -36,6 +39,7 @@ import { monthStartOf } from '@/lib/month';
 import { NoHouseholdError } from '@/repositories/errors';
 import type {
   BudgetRow,
+  CustomEnvelopeRow,
   DreamGoalRow,
   EnvelopeRow,
   ExpenseRow,
@@ -145,7 +149,7 @@ async function readIncomes(monthId: MonthId): Promise<IncomeByMember> {
 
 async function readMonth(monthId: MonthId): Promise<MonthBudget> {
   const household = await readHousehold();
-  const limits = emptyLimits();
+  const limits: EnvelopeLimits = emptyLimits();
 
   const { data, error } = await supabase
     .from('budgets')
@@ -170,9 +174,8 @@ async function readMonth(monthId: MonthId): Promise<MonthBudget> {
   if (envelopeError) throw envelopeError;
 
   for (const row of (envelopeRows ?? []) as unknown as EnvelopeRow[]) {
-    if (isEnvelopeId(row.envelope_id)) {
-      limits[row.envelope_id] = row.limit_pkr;
-    }
+    // Built-in and custom ids share the column; nothing is dropped.
+    limits[row.envelope_id] = row.limit_pkr;
   }
 
   return { id: budget.id, locked: budget.locked, limits };
@@ -204,11 +207,55 @@ async function readExpenses(monthId: MonthId): Promise<Expense[]> {
 
   if (error) throw error;
 
-  // A row saved under an envelope id this build does not know (for example a
-  // newer app version) is skipped instead of crashing every screen.
-  return ((data ?? []) as unknown as ExpenseRow[])
-    .filter((row) => isEnvelopeId(row.envelope_id))
-    .map(toExpense);
+  // Every row is kept: a custom envelope id is as valid as a built-in one.
+  return ((data ?? []) as unknown as ExpenseRow[]).map(toExpense);
+}
+
+async function readCustomEnvelopes(): Promise<CustomEnvelope[]> {
+  const { data, error } = await supabase
+    .from('household_envelopes')
+    .select('id, name, icon, tone')
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as CustomEnvelopeRow[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    icon: row.icon as EnvelopeIcon,
+    tone: row.tone as EnvelopeTone,
+  }));
+}
+
+/**
+ * Creates the category and its first monthly limit in one RPC, so a failure
+ * cannot leave a category behind with no plan row.
+ */
+async function createEnvelope(
+  envelope: CustomEnvelope,
+  monthId: MonthId,
+  limitPkr: number,
+): Promise<CustomEnvelope> {
+  const { data, error } = await supabase.rpc('create_household_envelope', {
+    p_id: envelope.id,
+    p_name: envelope.name,
+    p_icon: envelope.icon,
+    p_tone: envelope.tone,
+    p_month_start: monthStartOf(monthId),
+    p_limit: wholePkr(limitPkr),
+  });
+
+  if (error) throw error;
+
+  const row = (Array.isArray(data) ? data[0] : data) as CustomEnvelopeRow | null;
+  if (!row) throw new Error('envelope_not_found');
+
+  return {
+    id: row.id,
+    name: row.name,
+    icon: row.icon as EnvelopeIcon,
+    tone: row.tone as EnvelopeTone,
+  };
 }
 
 async function readDreamGoal(): Promise<DreamGoal> {
@@ -442,6 +489,11 @@ export function createSupabaseRepositories(): Repositories {
       create: createExpense,
       update: updateExpense,
       remove: removeExpense,
+    },
+
+    envelopes: {
+      list: readCustomEnvelopes,
+      create: createEnvelope,
     },
 
     dreamGoal: {

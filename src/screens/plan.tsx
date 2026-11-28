@@ -4,7 +4,7 @@
  * Step 13a: back header + plum summary card (income, split bar, envelopes and
  * buffer totals). Steps 13b/13c add the envelope rows and the lock button.
  */
-import { ChevronLeft, ChevronRight, Lock, Pencil, Unlock, Users } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Lock, Pencil, Plus, Unlock, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -17,13 +17,14 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AddEnvelopeSheet } from '@/components/add-envelope-sheet';
 import { AddExpenseSheet } from '@/components/add-expense-sheet';
 import { BottomNav, BOTTOM_NAV_SPACE } from '@/components/bottom-nav';
 import { IncomeSheet } from '@/components/income-sheet';
 import { PlanEnvelopeRow } from '@/components/plan-envelope-row';
 import { Card } from '@/components/ui/card';
 import { Money } from '@/components/ui/money';
-import { ENVELOPES } from '@/constants/envelopes';
+import { customEnvelopeView, ENVELOPES } from '@/constants/envelopes';
 import type { Member } from '@/domain/types';
 import { bufferOf, combinedIncome, spentByEnvelope, totalLimits } from '@/lib/budget';
 import { formatAmount } from '@/lib/money';
@@ -76,6 +77,7 @@ export default function PlanScreen() {
     month,
     members,
     expenses,
+    customEnvelopes,
     setLimit,
     commitLimit,
     setMemberIncome,
@@ -86,12 +88,15 @@ export default function PlanScreen() {
     hasBudget,
   } = useBudget();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [envelopeSheetOpen, setEnvelopeSheetOpen] = useState(false);
   const [incomeMember, setIncomeMember] = useState<Member | null>(null);
 
   const income = combinedIncome(month.incomes);
   const limits = month.limits;
   const locked = month.locked;
   const spent = spentByEnvelope(expenses);
+  const envelopes = [...ENVELOPES, ...customEnvelopes.map(customEnvelopeView)];
+  const canEditPlan = !locked && !switching;
   const inEnvelopes = totalLimits(limits);
   const buffer = bufferOf(income, limits);
   const envelopeShare = income > 0 ? Math.min(1, inEnvelopes / income) : 0;
@@ -461,17 +466,54 @@ export default function PlanScreen() {
                 Envelopes
               </Text>
 
-              {ENVELOPES.map((envelope) => (
-                <PlanEnvelopeRow
-                  key={envelope.id}
-                  envelope={envelope}
-                  limit={limits[envelope.id]}
-                  spent={spent[envelope.id]}
-                  disabled={locked || switching}
-                  onChange={(value) => setLimit(envelope.id, value)}
-                  onCommit={(value) => commitLimit(envelope.id, value)}
-                />
-              ))}
+              {envelopes.map((envelope) => {
+                const saved = limits[envelope.id] ?? 0;
+                const isCustom = envelope.group === null;
+                return (
+                  <PlanEnvelopeRow
+                    key={envelope.id}
+                    envelope={envelope}
+                    limit={saved}
+                    spent={spent[envelope.id] ?? 0}
+                    max={isCustom ? Math.max(20_000, saved * 2) : undefined}
+                    disabled={locked || switching}
+                    onChange={(value) => setLimit(envelope.id, value)}
+                    onCommit={(value) => commitLimit(envelope.id, value)}
+                  />
+                );
+              })}
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add an envelope"
+                accessibilityState={{ disabled: !canEditPlan }}
+                disabled={!canEditPlan}
+                onPress={() => setEnvelopeSheetOpen(true)}
+                style={{
+                  minHeight: 52,
+                  borderRadius: 18,
+                  borderWidth: 1,
+                  borderStyle: 'dashed',
+                  borderColor: colors['chip-border'],
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  opacity: canEditPlan ? 1 : 0.45,
+                }}
+              >
+                <Plus size={17} color={colors['emerald-ink']} strokeWidth={2.2} />
+                <Text
+                  style={{
+                    fontFamily: fonts['sans-semibold'],
+                    fontSize: 13,
+                    lineHeight: 18,
+                    color: colors['emerald-ink'],
+                  }}
+                >
+                  Add envelope
+                </Text>
+              </Pressable>
             </View>
 
             <View style={{ gap: 8 }}>
@@ -555,6 +597,12 @@ export default function PlanScreen() {
       />
 
       <AddExpenseSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} />
+
+      <AddEnvelopeSheet
+        visible={envelopeSheetOpen}
+        monthLabel={monthLabelOf(month.id)}
+        onClose={() => setEnvelopeSheetOpen(false)}
+      />
 
       <IncomeSheet
         visible={incomeMember !== null}

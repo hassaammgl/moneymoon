@@ -5,11 +5,12 @@
  * right. Rose is used only for the wife's own spending; every other tile is
  * neutral so emerald keeps meaning "healthy budget".
  */
+import { Wallet } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { Pill } from '@/components/ui/pill';
 import { Money } from '@/components/ui/money';
-import { getEnvelope } from '@/constants/envelopes';
+import { findEnvelope } from '@/constants/envelopes';
 import type { Expense } from '@/domain/types';
 import { timeAgo } from '@/lib/time';
 import { useBudget } from '@/store/budget-store';
@@ -24,10 +25,10 @@ export interface ExpenseRowProps {
 }
 
 export function ExpenseRow({ expense, onPress, showCategory = false }: ExpenseRowProps) {
-  const { members } = useBudget();
-  const envelope = getEnvelope(expense.envelopeId);
-  const Icon = envelope.icon;
-  const isHers = envelope.isHers;
+  const { members, customEnvelopes } = useBudget();
+  const envelope = findEnvelope(expense.envelopeId, customEnvelopes);
+  const Icon = envelope?.icon ?? Wallet;
+  const isHers = envelope?.isHers ?? false;
   const payer = members.find((member) => member.id === expense.paidBy);
   const payerName = payer?.displayName ?? 'Unknown';
   const payerRose = payer?.colorKey === 'rose';
@@ -94,7 +95,7 @@ export function ExpenseRow({ expense, onPress, showCategory = false }: ExpenseRo
               }}
             >
               {showCategory
-                ? `${envelope.shortName} · ${timeAgo(expense.createdAt)}`
+                ? `${envelope?.shortName ?? 'Envelope'} · ${timeAgo(expense.createdAt)}`
                 : timeAgo(expense.createdAt)}
             </Text>
           </View>

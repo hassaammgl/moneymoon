@@ -1,17 +1,37 @@
 /**
- * The seven budget envelopes and the four dashboard groups.
+ * The seven built-in budget envelopes, the four dashboard groups, and the
+ * helpers that turn a household-made envelope into the same shape.
  *
- * These are the defaults a household starts from. Once the Monthly Plan screen
- * is wired to Supabase the limits come from the `months` table; the ids, names,
- * icons and grouping stay here because they are app constants, not user data.
+ * The seven are app constants, not user data: their ids, names, icons and
+ * grouping live here. Custom envelopes are rows in `household_envelopes` and
+ * arrive with the snapshot; their uuid is used as `EnvelopeId`, so the plan,
+ * expense sheet and history all treat both kinds the same way.
  */
 
 import type { LucideIcon } from 'lucide-react-native';
-import { Bus, Car, Heart, House, Pill, ShoppingBasket, Wifi, Zap } from 'lucide-react-native';
+import {
+  Briefcase,
+  Bus,
+  Car,
+  Gift,
+  GraduationCap,
+  Heart,
+  House,
+  PawPrint,
+  PiggyBank,
+  Pill,
+  Plane,
+  ShoppingBag,
+  ShoppingBasket,
+  Wallet,
+  Wifi,
+  Zap,
+} from 'lucide-react-native';
 
+import type { CustomEnvelope, EnvelopeIcon, EnvelopeLimits } from '@/domain/types';
 import type { ThemeColors } from '@/theme';
 
-export type EnvelopeId =
+export type BuiltInEnvelopeId =
   | 'room-rent'
   | 'utilities'
   | 'internet'
@@ -19,6 +39,13 @@ export type EnvelopeId =
   | 'commute'
   | 'her-kharcha'
   | 'medicine';
+
+/**
+ * Any envelope key: one of the seven built-ins or a custom envelope's uuid.
+ * The `string & {}` arm keeps editor completions for the seven while letting a
+ * database-minted uuid through without a cast.
+ */
+export type EnvelopeId = BuiltInEnvelopeId | (string & {});
 
 export type EnvelopeGroupId = 'groceries' | 'nest' | 'her' | 'commuteCare';
 
@@ -30,9 +57,10 @@ export interface Envelope {
   name: string;
   /** Label used on dashboard cards and chips. */
   shortName: string;
-  /** Default monthly limit in whole PKR. */
+  /** Default monthly limit in whole PKR; 0 for a custom envelope. */
   limit: number;
-  group: EnvelopeGroupId;
+  /** Built-in group, or null for a household-made envelope. */
+  group: EnvelopeGroupId | null;
   /** Her Personal Kharcha is the only envelope that belongs to one partner. */
   isHers: boolean;
   tone: Tone;
@@ -168,6 +196,49 @@ export function getEnvelope(id: EnvelopeId): Envelope {
   return envelope;
 }
 
+/** Lucide component for each key an envelope row may store. */
+export const ENVELOPE_ICONS: Record<EnvelopeIcon, LucideIcon> = {
+  wallet: Wallet,
+  'piggy-bank': PiggyBank,
+  'graduation-cap': GraduationCap,
+  gift: Gift,
+  plane: Plane,
+  briefcase: Briefcase,
+  'paw-print': PawPrint,
+  'shopping-bag': ShoppingBag,
+};
+
+/** A custom row rendered in the same shape as a built-in envelope. */
+export function customEnvelopeView(envelope: CustomEnvelope): Envelope {
+  return {
+    id: envelope.id,
+    name: envelope.name,
+    shortName: envelope.name,
+    // No default limit: the slider scale comes from the saved month limit.
+    limit: 0,
+    group: null,
+    isHers: false,
+    tone: envelope.tone,
+    icon: ENVELOPE_ICONS[envelope.icon] ?? Wallet,
+  };
+}
+
+/**
+ * Looks up a built-in envelope or one of the household's custom rows.
+ * Returns null for an id this build does not know (for example a newer app
+ * version created it), so a single bad row can never crash a screen.
+ */
+export function findEnvelope(
+  id: EnvelopeId,
+  custom: readonly CustomEnvelope[] = [],
+): Envelope | null {
+  const builtIn = ENVELOPES.find((candidate) => candidate.id === id);
+  if (builtIn) return builtIn;
+
+  const row = custom.find((candidate) => candidate.id === id);
+  return row ? customEnvelopeView(row) : null;
+}
+
 export function getGroup(id: EnvelopeGroupId): EnvelopeGroup {
   const group = ENVELOPE_GROUPS.find((candidate) => candidate.id === id);
   if (!group) throw new Error(`Unknown envelope group: ${id}`);
@@ -175,15 +246,15 @@ export function getGroup(id: EnvelopeGroupId): EnvelopeGroup {
 }
 
 /** Every envelope at zero — the shape a month has before any limits are saved. */
-export function emptyLimits(): Record<EnvelopeId, number> {
+export function emptyLimits(): EnvelopeLimits {
   return ENVELOPES.reduce(
     (limits, envelope) => ({ ...limits, [envelope.id]: 0 }),
-    {} as Record<EnvelopeId, number>,
+    {} as EnvelopeLimits,
   );
 }
 
-/** True when `value` is one of the seven envelope ids the database allows. */
-export function isEnvelopeId(value: string): value is EnvelopeId {
+/** True when `value` is one of the seven built-in envelope ids. */
+export function isBuiltInEnvelopeId(value: string): value is BuiltInEnvelopeId {
   return ENVELOPES.some((envelope) => envelope.id === value);
 }
 

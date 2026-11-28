@@ -9,6 +9,7 @@
 import type { EnvelopeId } from '@/constants/envelopes';
 import type {
   BudgetSnapshot,
+  CustomEnvelope,
   Expense,
   ExpensePatch,
   MemberId,
@@ -22,6 +23,7 @@ export type BudgetAction =
   | { type: 'deleteExpense'; id: string }
   | { type: 'setMemberIncome'; memberId: MemberId; income: number }
   | { type: 'setLimit'; envelopeId: EnvelopeId; amount: number }
+  | { type: 'addEnvelope'; envelope: CustomEnvelope; limit: number }
   | { type: 'lockPlan' }
   | { type: 'unlockPlan' };
 
@@ -91,6 +93,28 @@ export function budgetReducer(state: BudgetSnapshot, action: BudgetAction): Budg
           ...state.month,
           limits: { ...state.month.limits, [action.envelopeId]: wholePkr(action.amount) },
         },
+      };
+    }
+
+    case 'addEnvelope': {
+      if (state.customEnvelopes.some((envelope) => envelope.id === action.envelope.id)) {
+        return state;
+      }
+
+      const limit = wholePkr(action.limit);
+
+      return {
+        ...state,
+        customEnvelopes: [...state.customEnvelopes, action.envelope],
+        // Only a non-zero first limit touches the month; the category itself is
+        // household-wide and shows on every month after this one.
+        month:
+          limit > 0
+            ? {
+                ...state.month,
+                limits: { ...state.month.limits, [action.envelope.id]: limit },
+              }
+            : state.month,
       };
     }
 

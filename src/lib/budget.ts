@@ -11,7 +11,13 @@ import {
   type EnvelopeGroupId,
   type EnvelopeId,
 } from '@/constants/envelopes';
-import type { Expense, IncomeByMember, Member, MemberId } from '@/domain/types';
+import type {
+  EnvelopeLimits,
+  Expense,
+  IncomeByMember,
+  Member,
+  MemberId,
+} from '@/domain/types';
 
 export type EnvelopeStatus = 'ok' | 'tight' | 'over';
 
@@ -69,17 +75,16 @@ export function totalSpent(expenses: readonly Expense[]): number {
   return expenses.reduce((sum, expense) => sum + expense.amount, 0);
 }
 
-/** Spend per envelope, with every envelope present. */
+/** Spend per envelope, with every built-in present and custom ids added. */
 export function spentByEnvelope(expenses: readonly Expense[]): Record<EnvelopeId, number> {
-  const totals = Object.fromEntries(
+  const totals: Record<string, number> = Object.fromEntries(
     ENVELOPES.map((envelope) => [envelope.id, 0]),
-  ) as Record<EnvelopeId, number>;
+  );
 
   for (const expense of expenses) {
-    // An expense saved under an envelope that no longer exists must not poison
-    // the totals with NaN.
-    if (!(expense.envelopeId in totals)) continue;
-    totals[expense.envelopeId] += expense.amount;
+    // Unknown ids are kept rather than dropped: a custom envelope removed on
+    // another device must not hide money that was already spent.
+    totals[expense.envelopeId] = (totals[expense.envelopeId] ?? 0) + expense.amount;
   }
   return totals;
 }
@@ -97,22 +102,22 @@ export function spentByGroup(expenses: readonly Expense[]): Record<EnvelopeGroup
 }
 
 /** Limit per dashboard group, summed from its envelopes. */
-export function limitsByGroup(limits: Record<EnvelopeId, number>): Record<EnvelopeGroupId, number> {
+export function limitsByGroup(limits: EnvelopeLimits): Record<EnvelopeGroupId, number> {
   return Object.fromEntries(
     ENVELOPE_GROUPS.map((group) => [
       group.id,
-      group.envelopeIds.reduce((sum, id) => sum + limits[id], 0),
+      group.envelopeIds.reduce((sum, id) => sum + (limits[id] ?? 0), 0),
     ]),
   ) as Record<EnvelopeGroupId, number>;
 }
 
-/** Sum of every envelope limit. */
-export function totalLimits(limits: Record<EnvelopeId, number>): number {
-  return ENVELOPES.reduce((sum, envelope) => sum + limits[envelope.id], 0);
+/** Sum of every envelope limit — built-in and custom. */
+export function totalLimits(limits: EnvelopeLimits): number {
+  return Object.values(limits).reduce((sum, amount) => sum + amount, 0);
 }
 
 /** Income − sum of limits: the money that never entered an envelope. */
-export function bufferOf(income: number, limits: Record<EnvelopeId, number>): number {
+export function bufferOf(income: number, limits: EnvelopeLimits): number {
   return income - totalLimits(limits);
 }
 

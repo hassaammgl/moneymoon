@@ -42,14 +42,51 @@ export interface Member {
 /** One amount per partner for a single month. */
 export type IncomeByMember = Record<MemberId, number>;
 
+/** Limit per envelope for one month. Custom ids may be absent until set. */
+export type EnvelopeLimits = Record<string, number>;
+
+/**
+ * Icons a custom envelope may use. The database stores the key; the app maps it
+ * to the Lucide component, so a custom row never stores a component.
+ */
+export type EnvelopeIcon =
+  | 'wallet'
+  | 'piggy-bank'
+  | 'graduation-cap'
+  | 'gift'
+  | 'plane'
+  | 'briefcase'
+  | 'paw-print'
+  | 'shopping-bag';
+
+/** Colour family shared by built-in and custom envelopes. */
+export type EnvelopeTone = 'lilac' | 'amber' | 'mint' | 'rose';
+
+/** A household-made envelope, stored in `household_envelopes`. */
+export interface CustomEnvelope {
+  id: string;
+  name: string;
+  icon: EnvelopeIcon;
+  tone: EnvelopeTone;
+}
+
+/** What the add-envelope sheet collects; the store mints the id. */
+export interface NewEnvelope {
+  name: string;
+  icon: EnvelopeIcon;
+  tone: EnvelopeTone;
+  /** Limit for the month that is open when it is created; 0 leaves it unset. */
+  limit: number;
+}
+
 /** The month's shared plan. Combined income is never stored here. */
 export interface MonthPlan {
   id: MonthId;
   /** Month-scoped income per partner; the household total is derived. */
   incomes: IncomeByMember;
   locked: boolean;
-  /** One limit per envelope. */
-  limits: Record<EnvelopeId, number>;
+  /** One limit per envelope, built-in or custom. */
+  limits: EnvelopeLimits;
 }
 
 /** One logged spend, attributed to the partner who paid. Identified by a UUID so
@@ -77,6 +114,8 @@ export interface BudgetSnapshot {
   members: Member[];
   month: MonthPlan;
   expenses: Expense[];
+  /** Household-made envelopes; the seven built-ins are app constants. */
+  customEnvelopes: CustomEnvelope[];
 }
 
 /** The shared savings target behind the Dream Buffer card. */

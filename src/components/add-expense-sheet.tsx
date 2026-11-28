@@ -17,7 +17,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -27,7 +26,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ENVELOPES, type EnvelopeId } from '@/constants/envelopes';
-import type { Expense, MemberId } from '@/domain/types';
+import type { CustomEnvelope, Expense, MemberId } from '@/domain/types';
 import { createId } from '@/lib/id';
 import { formatAmount, parseAmountInput } from '@/lib/money';
 import { useBudget } from '@/store/budget-store';
@@ -35,14 +34,25 @@ import { colors, fonts } from '@/theme';
 
 const QUICK_AMOUNTS = [100, 500, 1_000] as const;
 
-/** Category chip labels; Her Kharcha reads as "Her", not "Wife's". */
-const CATEGORY_LABEL: Record<EnvelopeId, string> = ENVELOPES.reduce(
-  (labels, envelope) => ({
-    ...labels,
-    [envelope.id]: envelope.id === 'her-kharcha' ? 'Her Kharcha' : envelope.shortName,
-  }),
-  {} as Record<EnvelopeId, string>,
-);
+interface CategoryOption {
+  id: EnvelopeId;
+  label: string;
+}
+
+/** Built-in chips first, then the household's own envelopes. */
+function categoryOptions(custom: readonly CustomEnvelope[]): CategoryOption[] {
+  return [
+    ...ENVELOPES.map((envelope) => ({
+      id: envelope.id,
+      label: envelope.id === 'her-kharcha' ? 'Her Kharcha' : envelope.shortName,
+    })),
+    ...custom.map((envelope) => ({ id: envelope.id, label: envelope.name })),
+  ];
+}
+
+function categoryLabel(id: EnvelopeId, custom: readonly CustomEnvelope[]): string {
+  return categoryOptions(custom).find((option) => option.id === id)?.label ?? 'Envelope';
+}
 
 export interface AddExpenseSheetProps {
   visible: boolean;
@@ -53,7 +63,8 @@ export interface AddExpenseSheetProps {
 
 export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpenseSheetProps) {
   const insets = useSafeAreaInsets();
-  const { members, addExpense, updateExpense, deleteExpense } = useBudget();
+  const { members, customEnvelopes, addExpense, updateExpense, deleteExpense } = useBudget();
+  const categories = categoryOptions(customEnvelopes);
   // Same default as before the member model: the second partner, falling back
   // to the first if the household order ever changes.
   const defaultPayerId = members[1]?.id ?? members[0]?.id ?? '';
@@ -70,7 +81,7 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
       amount,
       paidBy,
       envelopeId: category,
-      note: note.trim() || CATEGORY_LABEL[category],
+      note: note.trim() || categoryLabel(category, customEnvelopes),
     };
 
     if (expense) {
@@ -96,7 +107,7 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
 
     Alert.alert(
       'Delete this expense?',
-      `Rs ${formatAmount(expense.amount)} for ${CATEGORY_LABEL[expense.envelopeId]} will be removed for both of you.`,
+      `Rs ${formatAmount(expense.amount)} for ${categoryLabel(expense.envelopeId, customEnvelopes)} will be removed for both of you.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -120,7 +131,7 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         style={{ flex: 1, justifyContent: 'flex-end' }}
       >
         <Pressable
@@ -388,15 +399,15 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
             </Text>
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {ENVELOPES.map((envelope) => {
-                const selected = category === envelope.id;
+              {categories.map((option) => {
+                const selected = category === option.id;
                 return (
                   <Pressable
-                    key={envelope.id}
+                    key={option.id}
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
-                    accessibilityLabel={CATEGORY_LABEL[envelope.id]}
-                    onPress={() => setCategory(envelope.id)}
+                    accessibilityLabel={option.label}
+                    onPress={() => setCategory(option.id)}
                     style={{
                       minHeight: 44,
                       justifyContent: 'center',
@@ -416,7 +427,7 @@ export function AddExpenseSheet({ visible, onClose, expense = null }: AddExpense
                         color: colors.ink,
                       }}
                     >
-                      {CATEGORY_LABEL[envelope.id]}
+                      {option.label}
                     </Text>
                   </Pressable>
                 );

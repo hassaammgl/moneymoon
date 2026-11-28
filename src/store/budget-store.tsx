@@ -32,13 +32,21 @@ import {
 } from 'react';
 
 import type { EnvelopeId } from '@/constants/envelopes';
-import type { BudgetSnapshot, Expense, ExpensePatch, MemberId, MonthId } from '@/domain/types';
+import type {
+  BudgetSnapshot,
+  Expense,
+  ExpensePatch,
+  MemberId,
+  MonthId,
+  NewEnvelope,
+} from '@/domain/types';
+import { createId } from '@/lib/id';
 import { currentMonthId } from '@/lib/month';
 import { useSession } from '@/providers/session';
 import { describeDataError, describeWriteError, isAuthError } from '@/repositories/errors';
 import { emptySnapshot, loadBudgetSnapshot } from '@/repositories/load';
 import { supabaseRepositories } from '@/repositories/supabase';
-import { budgetReducer } from '@/store/budget-reducer';
+import { budgetReducer, wholePkr } from '@/store/budget-reducer';
 
 export type BudgetState = BudgetSnapshot;
 
@@ -109,6 +117,8 @@ export interface BudgetActions {
   setLimit: (envelopeId: EnvelopeId, amount: number) => void;
   /** Writes the value the slider settled on. */
   commitLimit: (envelopeId: EnvelopeId, amount: number) => void;
+  /** Adds a household category and its first limit for the open month. */
+  addEnvelope: (input: NewEnvelope) => void;
   lockPlan: () => void;
   unlockPlan: () => void;
   /** Loads another month. The current month is the upper bound. */
@@ -332,6 +342,33 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     [openMonthId, failWrite, refreshSilently],
   );
 
+  const addEnvelope = useCallback(
+    (input: NewEnvelope) => {
+      const name = input.name.trim();
+      if (!name) return;
+
+      const before = stateRef.current;
+      const envelope = {
+        id: createId(),
+        name,
+        icon: input.icon,
+        tone: input.tone,
+      };
+      const limit = wholePkr(input.limit);
+
+      setMutationError(null);
+      dispatch({ type: 'addEnvelope', envelope, limit });
+
+      void supabaseRepositories.envelopes
+        .create(envelope, openMonthId(), limit)
+        .catch((cause: unknown) => {
+          dispatch({ type: 'replace', snapshot: before });
+          failWrite(cause);
+        });
+    },
+    [openMonthId, failWrite],
+  );
+
   const lockPlan = useCallback(() => {
     const before = stateRef.current;
     setMutationError(null);
@@ -372,6 +409,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       setMemberIncome,
       setLimit: (envelopeId, amount) => dispatch({ type: 'setLimit', envelopeId, amount }),
       commitLimit,
+      addEnvelope,
       lockPlan,
       unlockPlan,
       setMonth,
@@ -382,6 +420,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       deleteExpense,
       setMemberIncome,
       commitLimit,
+      addEnvelope,
       lockPlan,
       unlockPlan,
       setMonth,

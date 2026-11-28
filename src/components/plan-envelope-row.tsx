@@ -25,6 +25,8 @@ export interface PlanEnvelopeRowProps {
   onChange: (limit: number) => void;
   /** Called once the drag or button press settles: this value goes to the DB. */
   onCommit: (limit: number) => void;
+  /** Upper end of the slider; defaults to twice the envelope's default limit. */
+  max?: number;
   /** True while the month is locked: slider and both buttons stop. */
   disabled?: boolean;
 }
@@ -35,15 +37,17 @@ export function PlanEnvelopeRow({
   spent,
   onChange,
   onCommit,
+  max,
   disabled = false,
 }: PlanEnvelopeRowProps) {
   const isHers = envelope.isHers;
-  const max = envelope.limit * 2;
+  // A custom envelope has no default, so the screen passes a floor-scaled max.
+  const sliderMax = max ?? envelope.limit * 2;
   const accent = isHers ? colors.rose : colors.emerald;
   const accentInk = isHers ? colors['rose-ink'] : colors['emerald-ink'];
   const isOver = spent > limit;
 
-  const clamp = (value: number) => Math.max(0, Math.min(max, Math.round(value)));
+  const clamp = (value: number) => Math.max(0, Math.min(sliderMax, Math.round(value)));
 
   return (
     <View
@@ -134,7 +138,7 @@ export function PlanEnvelopeRow({
         <Slider
           value={limit}
           minimumValue={0}
-          maximumValue={max}
+          maximumValue={sliderMax}
           step={SLIDER_STEP}
           disabled={disabled}
           onValueChange={(value) => onChange(clamp(value))}
@@ -151,7 +155,7 @@ export function PlanEnvelopeRow({
           accessibilityRole="button"
           accessibilityLabel={`Increase ${envelope.name} limit`}
           accessibilityState={{ disabled }}
-          disabled={disabled || limit >= max}
+          disabled={disabled || limit >= sliderMax}
           onPress={() => {
             const next = clamp(limit + BUTTON_STEP);
             onChange(next);
@@ -166,7 +170,7 @@ export function PlanEnvelopeRow({
             justifyContent: 'center',
             backgroundColor: colors.surface,
             borderColor: isHers ? colors['rose-line'] : colors['chip-border'],
-            opacity: disabled || limit >= max ? 0.4 : 1,
+            opacity: disabled || limit >= sliderMax ? 0.4 : 1,
           }}
         >
           <Plus size={18} color={accentInk} strokeWidth={2.2} />

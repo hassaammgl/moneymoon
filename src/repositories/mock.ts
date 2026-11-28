@@ -34,6 +34,7 @@ function cloneSnapshot(snapshot: BudgetSnapshot): BudgetSnapshot {
     members: snapshot.members.map((member) => ({ ...member })),
     month: cloneMonth(snapshot.month),
     expenses: snapshot.expenses.map((expense) => ({ ...expense })),
+    customEnvelopes: snapshot.customEnvelopes.map((envelope) => ({ ...envelope })),
   };
 }
 
@@ -46,6 +47,7 @@ export const INITIAL_BUDGET_STATE: BudgetSnapshot = {
   members: MOCK_MEMBERS.map((member) => ({ ...member })),
   month: cloneMonth(MOCK_MONTH),
   expenses: MOCK_EXPENSES.map((expense) => ({ ...expense })),
+  customEnvelopes: [],
 };
 
 export function createMockRepositories(seed: BudgetSnapshot): Repositories {
@@ -103,6 +105,14 @@ export function createMockRepositories(seed: BudgetSnapshot): Repositories {
       },
       remove: async (id) => {
         apply({ type: 'deleteExpense', id });
+      },
+    },
+
+    envelopes: {
+      list: async () => state.customEnvelopes.map((envelope) => ({ ...envelope })),
+      create: async (envelope, _monthId, limitPkr) => {
+        apply({ type: 'addEnvelope', envelope, limit: limitPkr });
+        return { ...envelope };
       },
     },
 

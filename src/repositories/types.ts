@@ -18,7 +18,9 @@
  */
 import type { EnvelopeId } from '@/constants/envelopes';
 import type {
+  CustomEnvelope,
   DreamGoal,
+  EnvelopeLimits,
   Expense,
   ExpensePatch,
   Household,
@@ -50,7 +52,17 @@ export interface IncomeRepository {
 export interface MonthBudget {
   id: string | null;
   locked: boolean;
-  limits: Record<EnvelopeId, number>;
+  limits: EnvelopeLimits;
+}
+
+/**
+ * The household's own envelope categories. The seven built-ins are app
+ * constants and never appear here; `create` also stores the first month's
+ * limit, so a half-created envelope cannot be left behind.
+ */
+export interface EnvelopeRepository {
+  list(): Promise<CustomEnvelope[]>;
+  create(envelope: CustomEnvelope, monthId: MonthId, limitPkr: number): Promise<CustomEnvelope>;
 }
 
 export interface BudgetRepository {
@@ -79,12 +91,13 @@ export interface DreamGoalRepository {
   get(): Promise<DreamGoal>;
 }
 
-/** The five repositories the store composes. */
+/** The repositories the store composes. */
 export interface Repositories {
   household: HouseholdRepository;
   income: IncomeRepository;
   budget: BudgetRepository;
   expenses: ExpenseRepository;
+  envelopes: EnvelopeRepository;
   dreamGoal: DreamGoalRepository;
 }
 
@@ -97,5 +110,6 @@ export interface ReadRepositories {
   income: Pick<IncomeRepository, 'listForMonth'>;
   budget: Pick<BudgetRepository, 'getMonth'>;
   expenses: Pick<ExpenseRepository, 'list'>;
+  envelopes: Pick<EnvelopeRepository, 'list'>;
   dreamGoal: Pick<DreamGoalRepository, 'get'>;
 }

@@ -87,7 +87,6 @@ export function HeroCard() {
         height={10}
         color={colors['mint-on-dark']}
         trackColor="rgba(255, 255, 255, 0.18)"
-        heartColor={colors['mint-on-dark-soft']}
         pulse
         accessibilityLabel="Spent this month"
         style={{ marginTop: 18 }}

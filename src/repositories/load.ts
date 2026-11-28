@@ -23,6 +23,7 @@ export function emptySnapshot(monthId: MonthId): BudgetSnapshot {
     members: [],
     month: { id: monthId, incomes: {}, locked: false, limits: emptyLimits() },
     expenses: [],
+    customEnvelopes: [],
   };
 }
 
@@ -32,11 +33,12 @@ export async function loadBudgetSnapshot(
 ): Promise<LoadedBudget> {
   const household = await repositories.household.get();
 
-  const [members, incomes, budget, expenses] = await Promise.all([
+  const [members, incomes, budget, expenses, customEnvelopes] = await Promise.all([
     repositories.household.listMembers(),
     repositories.income.listForMonth(monthId),
     repositories.budget.getMonth(monthId),
     repositories.expenses.list(monthId),
+    repositories.envelopes.list(),
   ]);
 
   return {
@@ -51,6 +53,7 @@ export async function loadBudgetSnapshot(
         limits: budget.limits,
       },
       expenses,
+      customEnvelopes,
     },
     hasBudget: budget.id !== null,
   };

@@ -31,7 +31,7 @@ export interface ProgressBarProps {
   heart?: boolean;
   /** Gentle heartbeat on the heart. Off by default so small bars stay calm. */
   pulse?: boolean;
-  /** Heart colour. Defaults to the fill colour. */
+  /** Heart colour. Defaults to a contrasting tone, never the fill colour. */
   heartColor?: string;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
@@ -51,6 +51,11 @@ export function ProgressBar({
   const heartbeat = useHeartbeat();
   const percent = Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
   const heartSize = height + 4;
+  // A heart in the fill's own colour disappears against it. Rose is the brand
+  // accent everywhere, so it is the default tip; a rose fill flips to deep
+  // emerald so the two never match.
+  const resolvedHeartColor =
+    heartColor ?? (color === colors.rose ? colors['emerald-ink'] : colors.rose);
 
   return (
     <View
@@ -91,7 +96,7 @@ export function ProgressBar({
           ]}
         >
           <Svg width={heartSize} height={heartSize} viewBox="0 0 24 24">
-            <Path d={HEART_PATH} fill={heartColor ?? color} />
+            <Path d={HEART_PATH} fill={resolvedHeartColor} />
           </Svg>
         </Animated.View>
       ) : null}

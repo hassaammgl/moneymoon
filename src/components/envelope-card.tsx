@@ -1,9 +1,10 @@
 /**
- * EnvelopeCard — one envelope group in the dashboard grid (v2).
+ * EnvelopeCard — one envelope group, or one custom envelope, in the dashboard
+ * grid (v2).
  *
- * Soft icon square, group name, the money left in Fraunces, the pool it came
- * from, and a 6px bar whose fill is the share spent. Her Kharcha is the only
- * card with a rose bar.
+ * Soft icon square, name, the money left in Fraunces, the pool it came from,
+ * and a 6px bar whose fill is the share spent. Rose is reserved for Her Kharcha
+ * and for going over; every other tone keeps emerald meaning "healthy budget".
  */
 import type { LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
@@ -15,6 +16,32 @@ import { statusOf } from '@/lib/budget';
 import { formatAmount, progressOf } from '@/lib/money';
 import { colors, fonts } from '@/theme';
 
+type CardTone = 'emerald' | 'rose' | 'lilac' | 'amber' | 'mint';
+
+const TILE_CLASS: Record<CardTone, string> = {
+  emerald: 'bg-emerald-soft',
+  rose: 'bg-rose-soft',
+  lilac: 'bg-lilac',
+  amber: 'bg-amber',
+  mint: 'bg-emerald-soft-strong',
+};
+
+const ICON_COLOR: Record<CardTone, string> = {
+  emerald: colors['emerald-ink'],
+  rose: colors['rose-ink'],
+  lilac: colors['ink-2'],
+  amber: colors['amber-ink'],
+  mint: colors['emerald-ink'],
+};
+
+const BAR_COLOR: Record<CardTone, string> = {
+  emerald: colors.emerald,
+  rose: colors.rose,
+  lilac: colors.accent,
+  amber: colors['amber-accent'],
+  mint: colors.emerald,
+};
+
 export interface EnvelopeCardProps {
   name: string;
   icon: LucideIcon;
@@ -22,8 +49,8 @@ export interface EnvelopeCardProps {
   spent: number;
   /** Sum of the group's envelope limits. */
   limit: number;
-  /** Rose is reserved for Her Kharcha. */
-  tone?: 'emerald' | 'rose';
+  /** Rose is reserved for Her Kharcha and for a custom rose category. */
+  tone?: CardTone;
 }
 
 export function EnvelopeCard({
@@ -33,16 +60,15 @@ export function EnvelopeCard({
   limit,
   tone = 'emerald',
 }: EnvelopeCardProps) {
-  const isRose = tone === 'rose';
   const left = limit - spent;
   const progress = progressOf(spent, limit);
   const isOver = statusOf(spent, limit) === 'over';
-  const barColor = isRose || isOver ? colors.rose : colors.emerald;
+  const barColor = isOver ? colors.rose : BAR_COLOR[tone];
 
   return (
     <Card radius={20} padding={14} style={{ flex: 1 }}>
       <View
-        className={isRose ? 'bg-rose-soft' : 'bg-emerald-soft'}
+        className={TILE_CLASS[tone]}
         style={{
           width: 36,
           height: 36,
@@ -51,11 +77,7 @@ export function EnvelopeCard({
           justifyContent: 'center',
         }}
       >
-        <Icon
-          size={18}
-          color={isRose ? colors['rose-ink'] : colors['emerald-ink']}
-          strokeWidth={1.75}
-        />
+        <Icon size={18} color={ICON_COLOR[tone]} strokeWidth={1.75} />
       </View>
 
       <Text

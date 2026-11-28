@@ -7,6 +7,7 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { BudgetError, BudgetLoading } from '@/components/budget-gate';
+import { WriteErrorToast } from '@/components/write-toast';
 import { SessionProvider, useSession } from '@/providers/session';
 import { BudgetProvider, useBudget } from '@/store/budget-store';
 import { colors, fontAssets } from '@/theme';
@@ -84,26 +85,35 @@ function RootNavigator() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.canvas },
-      }}
-    >
-      <Stack.Protected guard={!signedIn}>
-        <Stack.Screen name="login" />
-      </Stack.Protected>
+    <View style={{ flex: 1 }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.canvas },
+        }}
+      >
+        <Stack.Protected guard={!signedIn}>
+          <Stack.Screen name="login" />
+        </Stack.Protected>
 
-      <Stack.Protected guard={signedIn && household === null}>
-        <Stack.Screen name="onboarding" />
-      </Stack.Protected>
+        <Stack.Protected guard={signedIn && household === null}>
+          <Stack.Screen name="onboarding" />
+        </Stack.Protected>
 
-      <Stack.Protected guard={signedIn && household !== null}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="history" />
-        <Stack.Screen name="plan" />
-        <Stack.Screen name="household" />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Protected guard={signedIn && household !== null}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="history" />
+          <Stack.Screen name="plan" />
+          <Stack.Screen name="household" />
+        </Stack.Protected>
+      </Stack>
+
+      {budget.mutationError ? (
+        <WriteErrorToast
+          message={budget.mutationError}
+          onDismiss={budget.dismissMutationError}
+        />
+      ) : null}
+    </View>
   );
 }

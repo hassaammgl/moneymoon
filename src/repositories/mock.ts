@@ -91,7 +91,7 @@ export function createMockRepositories(seed: BudgetSnapshot): Repositories {
 
     expenses: {
       list: async () => state.expenses.map((expense) => ({ ...expense })),
-      create: async (expense) => {
+      create: async (_monthId, expense) => {
         apply({ type: 'addExpense', expense });
         const stored = state.expenses.find((row) => row.id === expense.id);
         return stored ? { ...stored } : { ...expense, amount: wholePkr(expense.amount) };

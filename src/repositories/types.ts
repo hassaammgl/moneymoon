@@ -12,9 +12,9 @@
  * Realtime subscriptions and version checks are deliberately absent: they
  * belong to the sync phase, and adding unused seams now would only rot.
  *
- * Step 5A reads only: the store loads through the read half. Writes stay on the
- * mock adapter until the sync phase gives the Supabase adapter real insert /
- * update methods with error handling and an outbox.
+ * Reads and writes share these contracts: the store loads through the read
+ * half (`ReadRepositories`) and sends each change through the matching write
+ * method, rolling the optimistic state back when one throws.
  */
 import type { EnvelopeId } from '@/constants/envelopes';
 import type {
@@ -65,8 +65,11 @@ export interface BudgetRepository {
 export interface ExpenseRepository {
   /** Expenses of the budget row that owns `monthId`; other months never leak. */
   list(monthId: MonthId): Promise<Expense[]>;
-  /** `expense.id` is the idempotency key, minted on the device. */
-  create(expense: Expense): Promise<Expense>;
+  /**
+   * `expense.id` is the idempotency key, minted on the device. `monthId` picks
+   * (or creates) the budget row the expense belongs to.
+   */
+  create(monthId: MonthId, expense: Expense): Promise<Expense>;
   /** Resolves with the stored row, or `null` if the id is unknown. */
   update(id: string, patch: ExpensePatch): Promise<Expense | null>;
   remove(id: string): Promise<void>;

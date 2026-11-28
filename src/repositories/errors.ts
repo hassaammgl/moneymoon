@@ -38,6 +38,13 @@ function rawCode(error: unknown): string {
   return '';
 }
 
+function rawDetails(error: unknown): string {
+  if (error && typeof error === 'object' && 'details' in error) {
+    return String((error as PostgrestLike).details ?? '');
+  }
+  return '';
+}
+
 /** True when the request failed because the JWT is missing or stale. */
 export function isAuthError(error: unknown): boolean {
   const message = rawMessage(error);
@@ -73,4 +80,50 @@ export function describeDataError(error: unknown): string {
   }
 
   return message.trim() || 'Could not load your budget. Try again.';
+}
+
+/**
+ * One short sentence for a failed write.
+ *
+ * The RPCs and triggers raise short machine codes (`plan_locked`,
+ * `limits_over_income`), so those are translated first; network, session and
+ * policy failures fall back to the read wording.
+ */
+export function describeWriteError(error: unknown): string {
+  const message = rawMessage(error);
+  const text = `${message} ${rawDetails(error)}`;
+
+  if (/plan_locked/.test(text)) {
+    return "This month's plan is locked. Unlock it before changing limits or income.";
+  }
+
+  if (/limits_over_income/.test(text)) {
+    return 'Envelopes are over your income. Lower a limit before locking.';
+  }
+
+  if (/not_your_income/.test(text)) {
+    return 'You can only change your own income.';
+  }
+
+  if (/not_a_member/.test(text)) {
+    return 'This account cannot change this household.';
+  }
+
+  if (/budget_not_found|no_household/.test(text)) {
+    return 'No plan could be created for this month. Pull to refresh and try again.';
+  }
+
+  if (/network request failed|failed to fetch|timeout|timed out|econn/i.test(message)) {
+    return 'No internet connection. Your change was not saved.';
+  }
+
+  if (isAuthError(error)) {
+    return 'Your session expired. Sign in again, then retry the change.';
+  }
+
+  if (isPermissionError(error)) {
+    return 'This account cannot change this household.';
+  }
+
+  return message.trim() || 'Could not save your change. Try again.';
 }

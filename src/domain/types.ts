@@ -32,6 +32,8 @@ export interface Household {
 export interface Member {
   id: MemberId;
   householdId: HouseholdId;
+  /** The auth user behind this membership; screens use it to find "me". */
+  userId: string;
   displayName: string;
   /** Avatar tint — the first partner is ink, the second rose. */
   colorKey: 'ink' | 'rose';

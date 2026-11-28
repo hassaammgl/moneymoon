@@ -23,12 +23,14 @@ export const MOCK_MEMBERS: readonly Member[] = [
   {
     id: 'b1f0c2d4-5e6a-4b7c-8d9e-0f1a2b3c4d5e',
     householdId: MOCK_HOUSEHOLD.id,
+    userId: 'a0e9d8c7-b6a5-4c4d-8e3f-1a2b3c4d5e6f',
     displayName: 'Husband',
     colorKey: 'ink',
   },
   {
     id: 'c2e1d3f5-6a7b-4c8d-9e0f-1a2b3c4d5e6f',
     householdId: MOCK_HOUSEHOLD.id,
+    userId: 'd3c2b1a0-9f8e-4d7c-8b6a-5f4e3d2c1b0a',
     displayName: 'Wife',
     colorKey: 'rose',
   },

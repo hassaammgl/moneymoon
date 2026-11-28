@@ -4,7 +4,7 @@
  * Step 13a: back header + plum summary card (income, split bar, envelopes and
  * buffer totals). Steps 13b/13c add the envelope rows and the lock button.
  */
-import { ChevronLeft, Lock, Unlock, Users } from 'lucide-react-native';
+import { ChevronLeft, Lock, Pencil, Unlock, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
@@ -12,13 +12,16 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AddExpenseSheet } from '@/components/add-expense-sheet';
 import { BottomNav, BOTTOM_NAV_SPACE } from '@/components/bottom-nav';
+import { IncomeSheet } from '@/components/income-sheet';
 import { PlanEnvelopeRow } from '@/components/plan-envelope-row';
 import { Card } from '@/components/ui/card';
 import { Money } from '@/components/ui/money';
 import { ENVELOPES } from '@/constants/envelopes';
+import type { Member } from '@/domain/types';
 import { bufferOf, combinedIncome, spentByEnvelope, totalLimits } from '@/lib/budget';
 import { formatAmount } from '@/lib/money';
 import { monthLabelOf } from '@/lib/month';
+import { useSession } from '@/providers/session';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
 
@@ -61,8 +64,20 @@ function LegendRow({
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { month, expenses, setLimit, lockPlan, unlockPlan, hasBudget } = useBudget();
+  const { session } = useSession();
+  const {
+    month,
+    members,
+    expenses,
+    setLimit,
+    commitLimit,
+    setMemberIncome,
+    lockPlan,
+    unlockPlan,
+    hasBudget,
+  } = useBudget();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [incomeMember, setIncomeMember] = useState<Member | null>(null);
 
   const income = combinedIncome(month.incomes);
   const limits = month.limits;
@@ -208,6 +223,118 @@ export default function PlanScreen() {
               </View>
             </Card>
 
+            <Card padding={16} radius={20} style={{ gap: 10 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: fonts['sans-medium'],
+                    fontSize: 12,
+                    lineHeight: 16,
+                    color: colors['ink-muted'],
+                  }}
+                >
+                  Income
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: fonts.sans,
+                    fontSize: 11,
+                    lineHeight: 15,
+                    color: colors['ink-muted'],
+                  }}
+                >
+                  {locked ? 'Locked for this month' : 'Each partner edits their own'}
+                </Text>
+              </View>
+
+              {members.map((member) => {
+                const mine = session?.user.id === member.userId;
+                const editable = mine && !locked;
+                const memberIncome = month.incomes[member.id] ?? 0;
+
+                return (
+                  <Pressable
+                    key={member.id}
+                    accessibilityRole={editable ? 'button' : 'text'}
+                    accessibilityLabel={
+                      editable
+                        ? `Edit your income, currently Rs ${formatAmount(memberIncome)}`
+                        : `${member.displayName}'s income, Rs ${formatAmount(memberIncome)}`
+                    }
+                    accessibilityState={{ disabled: !editable }}
+                    disabled={!editable}
+                    onPress={() => setIncomeMember(member)}
+                    style={{
+                      minHeight: 52,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 17,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor:
+                          member.colorKey === 'ink' ? colors.ink : colors.rose,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: fonts['sans-semibold'],
+                          fontSize: 13,
+                          lineHeight: 18,
+                          color:
+                            member.colorKey === 'ink' ? colors.cream : colors.surface,
+                        }}
+                      >
+                        {member.displayName.charAt(0)}
+                      </Text>
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontFamily: fonts['sans-medium'],
+                          fontSize: 14,
+                          lineHeight: 19,
+                          color: colors.ink,
+                        }}
+                      >
+                        {mine ? `${member.displayName} · You` : member.displayName}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: fonts.sans,
+                          fontSize: 11,
+                          lineHeight: 15,
+                          color: colors['ink-muted'],
+                        }}
+                      >
+                        {editable ? 'Tap to update' : 'Set by them'}
+                      </Text>
+                    </View>
+
+                    <Money amount={memberIncome} size="sm" color={colors.ink} />
+
+                    {editable ? (
+                      <Pencil size={14} color={colors['ink-muted']} strokeWidth={2} />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </Card>
+
             <View style={{ gap: 12 }}>
               <Text
                 style={{
@@ -228,6 +355,7 @@ export default function PlanScreen() {
                   spent={spent[envelope.id]}
                   disabled={locked}
                   onChange={(value) => setLimit(envelope.id, value)}
+                  onCommit={(value) => commitLimit(envelope.id, value)}
                 />
               ))}
             </View>
@@ -312,6 +440,17 @@ export default function PlanScreen() {
       />
 
       <AddExpenseSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} />
+
+      <IncomeSheet
+        visible={incomeMember !== null}
+        member={incomeMember}
+        income={incomeMember ? (month.incomes[incomeMember.id] ?? 0) : 0}
+        monthLabel={monthLabelOf(month.id)}
+        onSave={(amount) => {
+          if (incomeMember) setMemberIncome(incomeMember.id, amount);
+        }}
+        onClose={() => setIncomeMember(null)}
+      />
     </View>
   );
 }

@@ -23,6 +23,8 @@ export interface PlanEnvelopeRowProps {
   /** Spend logged against this envelope, from `spentByEnvelope`. */
   spent: number;
   onChange: (limit: number) => void;
+  /** Called once the drag or button press settles: this value goes to the DB. */
+  onCommit: (limit: number) => void;
   /** True while the month is locked: slider and both buttons stop. */
   disabled?: boolean;
 }
@@ -32,6 +34,7 @@ export function PlanEnvelopeRow({
   limit,
   spent,
   onChange,
+  onCommit,
   disabled = false,
 }: PlanEnvelopeRowProps) {
   const isHers = envelope.isHers;
@@ -108,7 +111,11 @@ export function PlanEnvelopeRow({
           accessibilityLabel={`Decrease ${envelope.name} limit`}
           accessibilityState={{ disabled }}
           disabled={disabled || limit <= 0}
-          onPress={() => onChange(clamp(limit - BUTTON_STEP))}
+          onPress={() => {
+            const next = clamp(limit - BUTTON_STEP);
+            onChange(next);
+            onCommit(next);
+          }}
           style={{
             width: 44,
             height: 44,
@@ -131,6 +138,7 @@ export function PlanEnvelopeRow({
           step={SLIDER_STEP}
           disabled={disabled}
           onValueChange={(value) => onChange(clamp(value))}
+          onSlidingComplete={(value) => onCommit(clamp(value))}
           minimumTrackTintColor={accent}
           maximumTrackTintColor={colors.track}
           thumbTintColor={accent}
@@ -144,7 +152,11 @@ export function PlanEnvelopeRow({
           accessibilityLabel={`Increase ${envelope.name} limit`}
           accessibilityState={{ disabled }}
           disabled={disabled || limit >= max}
-          onPress={() => onChange(clamp(limit + BUTTON_STEP))}
+          onPress={() => {
+            const next = clamp(limit + BUTTON_STEP);
+            onChange(next);
+            onCommit(next);
+          }}
           style={{
             width: 44,
             height: 44,

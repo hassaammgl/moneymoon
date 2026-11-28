@@ -2,15 +2,11 @@
  * BudgetStore — the single source of truth for the household, the month plan
  * and the expenses.
  *
- * Step 5A: the store now loads one month from Supabase through the read
- * repositories and replaces its state with the result. Screens keep reading
- * `useBudget()` and learn nothing about the backend; the extra fields below
- * (`status`, `error`, `hasBudget`, `reload`) only exist so the gate can show a
- * loading or error screen instead of flashing empty numbers.
- *
- * Writes are still local to the session: the reducer applies them so the UI is
- * instant, but nothing is sent to Postgres yet. The sync phase routes the same
- * actions through real repository methods with optimistic rollback.
+ * Reads load one month from Supabase and replace the state with the result.
+ * Writes are optimistic: the reducer applies the change immediately, the same
+ * change goes to Postgres, and a failure rolls the UI back and surfaces one
+ * sentence in `mutationError`. Screens keep calling `useBudget()` and never
+ * touch a repository.
  *
  * Never stored, always derived: spent, left, buffer and per-envelope totals are
  * computed by `lib/budget.ts` at render time, and combined income is summed
@@ -26,6 +22,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -34,7 +31,7 @@ import type { EnvelopeId } from '@/constants/envelopes';
 import type { BudgetSnapshot, Expense, ExpensePatch, MemberId } from '@/domain/types';
 import { currentMonthId } from '@/lib/month';
 import { useSession } from '@/providers/session';
-import { describeDataError, isAuthError } from '@/repositories/errors';
+import { describeDataError, describeWriteError, isAuthError } from '@/repositories/errors';
 import { emptySnapshot, loadBudgetSnapshot } from '@/repositories/load';
 import { supabaseRepositories } from '@/repositories/supabase';
 import { budgetReducer } from '@/store/budget-reducer';
@@ -54,6 +51,7 @@ type LoadAction =
   | { type: 'reset' }
   | { type: 'start' }
   | { type: 'success'; hasBudget: boolean }
+  | { type: 'saved' }
   | { type: 'failure'; error: string };
 
 const INITIAL_LOAD_STATE: LoadState = { status: 'idle', error: null, hasBudget: false };
@@ -73,6 +71,9 @@ function loadReducer(state: LoadState, action: LoadAction): LoadState {
       return { status: 'loading', error: null, hasBudget: state.hasBudget };
     case 'success':
       return { status: 'ready', error: null, hasBudget: action.hasBudget };
+    case 'saved':
+      // A write created the month's budget row, so the no-plan note can go.
+      return state.hasBudget ? state : { ...state, hasBudget: true };
     case 'failure':
       return { status: 'error', error: action.error, hasBudget: false };
     default:
@@ -86,7 +87,10 @@ export interface BudgetActions {
   deleteExpense: (id: string) => void;
   /** Changes one partner's income only; the other one is untouched. */
   setMemberIncome: (memberId: MemberId, income: number) => void;
+  /** Moves the slider locally; nothing is written yet. */
   setLimit: (envelopeId: EnvelopeId, amount: number) => void;
+  /** Writes the value the slider settled on. */
+  commitLimit: (envelopeId: EnvelopeId, amount: number) => void;
   lockPlan: () => void;
   unlockPlan: () => void;
 }
@@ -99,6 +103,9 @@ export interface BudgetContextValue extends BudgetState, BudgetActions {
   hasBudget: boolean;
   /** Re-runs the read for the current month. */
   reload: () => void;
+  /** The last write that failed, cleared by the banner. */
+  mutationError: string | null;
+  dismissMutationError: () => void;
 }
 
 const BudgetContext = createContext<BudgetContextValue | null>(null);
@@ -113,6 +120,15 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
   const [state, dispatch] = useReducer(budgetReducer, monthId, emptySnapshot);
   const [load, dispatchLoad] = useReducer(loadReducer, INITIAL_LOAD_STATE);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
+  // The optimistic rollback needs the snapshot as it was when the write began.
+  // A ref keeps that read out of the action callbacks' dependency lists.
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const householdId = household?.id ?? null;
 
@@ -134,6 +150,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         if (!active) return;
         dispatch({ type: 'replace', snapshot });
         dispatchLoad({ type: 'success', hasBudget: monthSaved });
+        setMutationError(null);
       })
       .catch((cause: unknown) => {
         if (!active) return;
@@ -158,18 +175,180 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     setAttempt((current) => current + 1);
   }, []);
 
+  const dismissMutationError = useCallback(() => {
+    setMutationError(null);
+  }, []);
+
+  const failWrite = useCallback(
+    (cause: unknown) => {
+      setMutationError(describeWriteError(cause));
+      if (isAuthError(cause)) void signOut();
+    },
+    [signOut],
+  );
+
+  /**
+   * Re-reads the month without showing the full-screen loader. Used when a
+   * limit write fails: the slider already moved, so the honest value comes from
+   * the database rather than from a possibly stale rollback snapshot.
+   */
+  const refreshSilently = useCallback(async () => {
+    try {
+      const { snapshot, hasBudget: monthSaved } = await loadBudgetSnapshot(
+        supabaseRepositories,
+        monthId,
+      );
+      dispatch({ type: 'replace', snapshot });
+      dispatchLoad({ type: 'success', hasBudget: monthSaved });
+    } catch (cause: unknown) {
+      failWrite(cause);
+    }
+  }, [monthId, failWrite]);
+
+  const addExpense = useCallback(
+    (expense: Expense) => {
+      const before = stateRef.current;
+      setMutationError(null);
+      dispatch({ type: 'addExpense', expense });
+
+      void supabaseRepositories.expenses
+        .create(monthId, expense)
+        .then((stored) => {
+          dispatch({ type: 'updateExpense', id: stored.id, patch: stored });
+          dispatchLoad({ type: 'saved' });
+        })
+        .catch((cause: unknown) => {
+          dispatch({ type: 'replace', snapshot: before });
+          failWrite(cause);
+        });
+    },
+    [monthId, failWrite],
+  );
+
+  const updateExpense = useCallback(
+    (id: string, patch: ExpensePatch) => {
+      const before = stateRef.current;
+      setMutationError(null);
+      dispatch({ type: 'updateExpense', id, patch });
+
+      void supabaseRepositories.expenses
+        .update(id, patch)
+        .then((stored) => {
+          if (!stored) {
+            dispatch({ type: 'replace', snapshot: before });
+            setMutationError('This expense no longer exists.');
+            return;
+          }
+          dispatch({ type: 'updateExpense', id: stored.id, patch: stored });
+        })
+        .catch((cause: unknown) => {
+          dispatch({ type: 'replace', snapshot: before });
+          failWrite(cause);
+        });
+    },
+    [failWrite],
+  );
+
+  const deleteExpense = useCallback(
+    (id: string) => {
+      const before = stateRef.current;
+      setMutationError(null);
+      dispatch({ type: 'deleteExpense', id });
+
+      void supabaseRepositories.expenses.remove(id).catch((cause: unknown) => {
+        dispatch({ type: 'replace', snapshot: before });
+        failWrite(cause);
+      });
+    },
+    [failWrite],
+  );
+
+  const setMemberIncome = useCallback(
+    (memberId: MemberId, income: number) => {
+      const before = stateRef.current;
+      setMutationError(null);
+      dispatch({ type: 'setMemberIncome', memberId, income });
+
+      void supabaseRepositories.income
+        .set(memberId, monthId, income)
+        .then((stored) => {
+          dispatch({ type: 'setMemberIncome', memberId, income: stored });
+        })
+        .catch((cause: unknown) => {
+          dispatch({ type: 'replace', snapshot: before });
+          failWrite(cause);
+        });
+    },
+    [monthId, failWrite],
+  );
+
+  const commitLimit = useCallback(
+    (envelopeId: EnvelopeId, amount: number) => {
+      setMutationError(null);
+
+      void supabaseRepositories.budget
+        .setLimit(monthId, envelopeId, amount)
+        .then(() => dispatchLoad({ type: 'saved' }))
+        .catch((cause: unknown) => {
+          failWrite(cause);
+          void refreshSilently();
+        });
+    },
+    [monthId, failWrite, refreshSilently],
+  );
+
+  const lockPlan = useCallback(() => {
+    const before = stateRef.current;
+    setMutationError(null);
+    dispatch({ type: 'lockPlan' });
+
+    void supabaseRepositories.budget
+      .lock(monthId)
+      .then((locked) => {
+        if (!locked) dispatch({ type: 'unlockPlan' });
+      })
+      .catch((cause: unknown) => {
+        dispatch({ type: 'replace', snapshot: before });
+        failWrite(cause);
+      });
+  }, [monthId, failWrite]);
+
+  const unlockPlan = useCallback(() => {
+    const before = stateRef.current;
+    setMutationError(null);
+    dispatch({ type: 'unlockPlan' });
+
+    void supabaseRepositories.budget
+      .unlock(monthId)
+      .then((locked) => {
+        if (locked) dispatch({ type: 'lockPlan' });
+      })
+      .catch((cause: unknown) => {
+        dispatch({ type: 'replace', snapshot: before });
+        failWrite(cause);
+      });
+  }, [monthId, failWrite]);
+
   const actions = useMemo<BudgetActions>(
     () => ({
-      addExpense: (expense) => dispatch({ type: 'addExpense', expense }),
-      updateExpense: (id, patch) => dispatch({ type: 'updateExpense', id, patch }),
-      deleteExpense: (id) => dispatch({ type: 'deleteExpense', id }),
-      setMemberIncome: (memberId, income) =>
-        dispatch({ type: 'setMemberIncome', memberId, income }),
+      addExpense,
+      updateExpense,
+      deleteExpense,
+      setMemberIncome,
       setLimit: (envelopeId, amount) => dispatch({ type: 'setLimit', envelopeId, amount }),
-      lockPlan: () => dispatch({ type: 'lockPlan' }),
-      unlockPlan: () => dispatch({ type: 'unlockPlan' }),
+      commitLimit,
+      lockPlan,
+      unlockPlan,
     }),
-    [],
+    [
+      addExpense,
+      updateExpense,
+      deleteExpense,
+      setMemberIncome,
+      commitLimit,
+      lockPlan,
+      unlockPlan,
+    ],
   );
 
   const value = useMemo<BudgetContextValue>(
@@ -180,8 +359,10 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       error: load.error,
       hasBudget: load.hasBudget,
       reload,
+      mutationError,
+      dismissMutationError,
     }),
-    [state, actions, load, reload],
+    [state, actions, load, reload, mutationError, dismissMutationError],
   );
 
   return <BudgetContext.Provider value={value}>{children}</BudgetContext.Provider>;

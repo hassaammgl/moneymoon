@@ -8,7 +8,8 @@
     "scheme": "moneymoon",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.moneymoon.app"
     },
     "android": {
       "package": "com.moneymoon.app",

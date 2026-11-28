@@ -39,6 +39,12 @@ export function monthStartOf(id: string): string {
   return `${year}-${month}-01`;
 }
 
+/** `'2026-11'` shifted by whole months: `-1` -> `'2026-10'`, `2` -> `'2027-01'`. */
+export function shiftMonth(id: string, delta: number): string {
+  const [year, month] = id.split('-').map(Number);
+  return monthIdOf(new Date(year, month - 1 + delta, 1));
+}
+
 /** Whole days remaining in the month, excluding today — 24 Nov -> 6. */
 export function daysLeftInMonth(date: Date): number {
   const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();

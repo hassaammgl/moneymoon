@@ -16,6 +16,7 @@ import { BottomNav, BOTTOM_NAV_SPACE } from '@/components/bottom-nav';
 import { ExpenseRow } from '@/components/expense-row';
 import { Card } from '@/components/ui/card';
 import type { Expense } from '@/domain/types';
+import { monthLabelOf } from '@/lib/month';
 import { dayKey, dayLabel } from '@/lib/time';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
@@ -29,7 +30,7 @@ interface DayGroup {
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { expenses } = useBudget();
+  const { expenses, month } = useBudget();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
 
@@ -126,7 +127,9 @@ export default function HistoryScreen() {
                     color: colors['ink-muted'],
                   }}
                 >
-                  {expenses.length === 1 ? '1 expense' : `${expenses.length} expenses`}
+                  {`${monthLabelOf(month.id)} · ${
+                    expenses.length === 1 ? '1 expense' : `${expenses.length} expenses`
+                  }`}
                 </Text>
               </View>
             </View>

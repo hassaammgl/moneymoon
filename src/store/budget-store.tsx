@@ -8,6 +8,10 @@
  * sentence in `mutationError`. Screens keep calling `useBudget()` and never
  * touch a repository.
  *
+ * The open month can be switched from Our Plan; every read and write follows
+ * the month of the snapshot on screen, and the current calendar month is the
+ * upper bound.
+ *
  * Never stored, always derived: spent, left, buffer and per-envelope totals are
  * computed by `lib/budget.ts` at render time, and combined income is summed
  * from the two per-partner rows.
@@ -28,7 +32,7 @@ import {
 } from 'react';
 
 import type { EnvelopeId } from '@/constants/envelopes';
-import type { BudgetSnapshot, Expense, ExpensePatch, MemberId } from '@/domain/types';
+import type { BudgetSnapshot, Expense, ExpensePatch, MemberId, MonthId } from '@/domain/types';
 import { currentMonthId } from '@/lib/month';
 import { useSession } from '@/providers/session';
 import { describeDataError, describeWriteError, isAuthError } from '@/repositories/errors';
@@ -45,6 +49,8 @@ interface LoadState {
   status: BudgetStatus;
   error: string | null;
   hasBudget: boolean;
+  /** A month change keeps the old numbers on screen while the new one loads. */
+  switching: boolean;
 }
 
 type LoadAction =
@@ -54,7 +60,12 @@ type LoadAction =
   | { type: 'saved' }
   | { type: 'failure'; error: string };
 
-const INITIAL_LOAD_STATE: LoadState = { status: 'idle', error: null, hasBudget: false };
+const INITIAL_LOAD_STATE: LoadState = {
+  status: 'idle',
+  error: null,
+  hasBudget: false,
+  switching: false,
+};
 
 /**
  * The load lifecycle lives in a reducer rather than three `useState`s so the
@@ -64,18 +75,25 @@ const INITIAL_LOAD_STATE: LoadState = { status: 'idle', error: null, hasBudget: 
 function loadReducer(state: LoadState, action: LoadAction): LoadState {
   switch (action.type) {
     case 'reset':
-      return state.status === 'idle' && !state.hasBudget && state.error === null
+      return state.status === 'idle' &&
+        !state.hasBudget &&
+        state.error === null &&
+        !state.switching
         ? state
         : INITIAL_LOAD_STATE;
     case 'start':
-      return { status: 'loading', error: null, hasBudget: state.hasBudget };
+      // A switch keeps `ready` so the screens stay mounted; the plain loading
+      // screen is only for the first load and for retries after an error.
+      return state.status === 'ready'
+        ? { ...state, error: null, switching: true }
+        : { status: 'loading', error: null, hasBudget: state.hasBudget, switching: false };
     case 'success':
-      return { status: 'ready', error: null, hasBudget: action.hasBudget };
+      return { status: 'ready', error: null, hasBudget: action.hasBudget, switching: false };
     case 'saved':
       // A write created the month's budget row, so the no-plan note can go.
       return state.hasBudget ? state : { ...state, hasBudget: true };
     case 'failure':
-      return { status: 'error', error: action.error, hasBudget: false };
+      return { status: 'error', error: action.error, hasBudget: false, switching: false };
     default:
       return state;
   }
@@ -93,6 +111,8 @@ export interface BudgetActions {
   commitLimit: (envelopeId: EnvelopeId, amount: number) => void;
   lockPlan: () => void;
   unlockPlan: () => void;
+  /** Loads another month. The current month is the upper bound. */
+  setMonth: (monthId: MonthId) => void;
 }
 
 export interface BudgetContextValue extends BudgetState, BudgetActions {
@@ -101,7 +121,9 @@ export interface BudgetContextValue extends BudgetState, BudgetActions {
   error: string | null;
   /** False when this month has no saved plan (the month loads as zeros). */
   hasBudget: boolean;
-  /** Re-runs the read for the current month. */
+  /** True while another month is loading; the previous one stays visible. */
+  switching: boolean;
+  /** Re-runs the read for the open month. */
   reload: () => void;
   /** The last write that failed, cleared by the banner. */
   mutationError: string | null;
@@ -114,8 +136,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   const { status: sessionStatus, household, signOut } = useSession();
 
   const [attempt, setAttempt] = useState(0);
-  // Captured at mount and re-read on reload, so an app left open past midnight
-  // picks up a new month. Month switching itself arrives with the sync phase.
+  // The month on screen. Starts at today's month; Our Plan can switch it back
+  // or forward up to the current month, and every screen follows this value.
   const [monthId, setMonthId] = useState(() => currentMonthId());
 
   const [state, dispatch] = useReducer(budgetReducer, monthId, emptySnapshot);
@@ -171,8 +193,18 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   }, [sessionStatus, householdId, monthId, attempt, signOut]);
 
   const reload = useCallback(() => {
-    setMonthId(currentMonthId());
     setAttempt((current) => current + 1);
+  }, []);
+
+  /**
+   * Switches the month every screen reads. The current calendar month is the
+   * upper bound: there is nothing to plan in the future yet, and a past month
+   * is only ever reached by stepping back.
+   */
+  const setMonth = useCallback((next: MonthId) => {
+    if (next > currentMonthId()) return;
+    setMutationError(null);
+    setMonthId(next);
   }, []);
 
   const dismissMutationError = useCallback(() => {
@@ -187,6 +219,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     [signOut],
   );
 
+  /** The month of the snapshot on screen; writes always follow what is visible. */
+  const openMonthId = useCallback(() => stateRef.current.month.id, []);
+
   /**
    * Re-reads the month without showing the full-screen loader. Used when a
    * limit write fails: the slider already moved, so the honest value comes from
@@ -196,14 +231,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     try {
       const { snapshot, hasBudget: monthSaved } = await loadBudgetSnapshot(
         supabaseRepositories,
-        monthId,
+        openMonthId(),
       );
       dispatch({ type: 'replace', snapshot });
       dispatchLoad({ type: 'success', hasBudget: monthSaved });
     } catch (cause: unknown) {
       failWrite(cause);
     }
-  }, [monthId, failWrite]);
+  }, [openMonthId, failWrite]);
 
   const addExpense = useCallback(
     (expense: Expense) => {
@@ -212,7 +247,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'addExpense', expense });
 
       void supabaseRepositories.expenses
-        .create(monthId, expense)
+        .create(openMonthId(), expense)
         .then((stored) => {
           dispatch({ type: 'updateExpense', id: stored.id, patch: stored });
           dispatchLoad({ type: 'saved' });
@@ -222,7 +257,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           failWrite(cause);
         });
     },
-    [monthId, failWrite],
+    [openMonthId, failWrite],
   );
 
   const updateExpense = useCallback(
@@ -270,7 +305,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'setMemberIncome', memberId, income });
 
       void supabaseRepositories.income
-        .set(memberId, monthId, income)
+        .set(memberId, openMonthId(), income)
         .then((stored) => {
           dispatch({ type: 'setMemberIncome', memberId, income: stored });
         })
@@ -279,7 +314,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           failWrite(cause);
         });
     },
-    [monthId, failWrite],
+    [openMonthId, failWrite],
   );
 
   const commitLimit = useCallback(
@@ -287,14 +322,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       setMutationError(null);
 
       void supabaseRepositories.budget
-        .setLimit(monthId, envelopeId, amount)
+        .setLimit(openMonthId(), envelopeId, amount)
         .then(() => dispatchLoad({ type: 'saved' }))
         .catch((cause: unknown) => {
           failWrite(cause);
           void refreshSilently();
         });
     },
-    [monthId, failWrite, refreshSilently],
+    [openMonthId, failWrite, refreshSilently],
   );
 
   const lockPlan = useCallback(() => {
@@ -303,7 +338,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'lockPlan' });
 
     void supabaseRepositories.budget
-      .lock(monthId)
+      .lock(openMonthId())
       .then((locked) => {
         if (!locked) dispatch({ type: 'unlockPlan' });
       })
@@ -311,7 +346,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'replace', snapshot: before });
         failWrite(cause);
       });
-  }, [monthId, failWrite]);
+  }, [openMonthId, failWrite]);
 
   const unlockPlan = useCallback(() => {
     const before = stateRef.current;
@@ -319,7 +354,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'unlockPlan' });
 
     void supabaseRepositories.budget
-      .unlock(monthId)
+      .unlock(openMonthId())
       .then((locked) => {
         if (locked) dispatch({ type: 'lockPlan' });
       })
@@ -327,7 +362,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'replace', snapshot: before });
         failWrite(cause);
       });
-  }, [monthId, failWrite]);
+  }, [openMonthId, failWrite]);
 
   const actions = useMemo<BudgetActions>(
     () => ({
@@ -339,6 +374,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       commitLimit,
       lockPlan,
       unlockPlan,
+      setMonth,
     }),
     [
       addExpense,
@@ -348,6 +384,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       commitLimit,
       lockPlan,
       unlockPlan,
+      setMonth,
     ],
   );
 
@@ -358,6 +395,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       status: load.status,
       error: load.error,
       hasBudget: load.hasBudget,
+      switching: load.switching,
       reload,
       mutationError,
       dismissMutationError,

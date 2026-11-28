@@ -4,10 +4,17 @@
  * Step 13a: back header + plum summary card (income, split bar, envelopes and
  * buffer totals). Steps 13b/13c add the envelope rows and the lock button.
  */
-import { ChevronLeft, Lock, Pencil, Unlock, Users } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Lock, Pencil, Unlock, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddExpenseSheet } from '@/components/add-expense-sheet';
@@ -20,7 +27,7 @@ import { ENVELOPES } from '@/constants/envelopes';
 import type { Member } from '@/domain/types';
 import { bufferOf, combinedIncome, spentByEnvelope, totalLimits } from '@/lib/budget';
 import { formatAmount } from '@/lib/money';
-import { monthLabelOf } from '@/lib/month';
+import { currentMonthId, monthLabelOf, shiftMonth } from '@/lib/month';
 import { useSession } from '@/providers/session';
 import { useBudget } from '@/store/budget-store';
 import { colors, fonts } from '@/theme';
@@ -74,6 +81,8 @@ export default function PlanScreen() {
     setMemberIncome,
     lockPlan,
     unlockPlan,
+    setMonth,
+    switching,
     hasBudget,
   } = useBudget();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -87,8 +96,9 @@ export default function PlanScreen() {
   const buffer = bufferOf(income, limits);
   const envelopeShare = income > 0 ? Math.min(1, inEnvelopes / income) : 0;
   const overBy = Math.max(0, inEnvelopes - income);
-  const lockDisabled = !locked && overBy > 0;
+  const lockDisabled = switching || (!locked && overBy > 0);
   const monthName = monthLabelOf(month.id).split(' ')[0] ?? '';
+  const isCurrentMonth = month.id === currentMonthId();
 
   const goHome = () => {
     if (router.canGoBack()) {
@@ -179,6 +189,110 @@ export default function PlanScreen() {
               </Pressable>
             </View>
 
+            {/* Month switcher: every screen follows the month chosen here. */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 14,
+              }}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Previous month"
+                accessibilityState={{ disabled: switching }}
+                disabled={switching}
+                hitSlop={6}
+                onPress={() => setMonth(shiftMonth(month.id, -1))}
+                className="bg-surface border-chip-border"
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  borderWidth: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: switching ? 0.5 : 1,
+                }}
+              >
+                <ChevronLeft size={18} color={colors.ink} strokeWidth={2} />
+              </Pressable>
+
+              <View style={{ minWidth: 168, alignItems: 'center', gap: 2 }}>
+                {switching ? (
+                  <View style={{ height: 24, justifyContent: 'center' }}>
+                    <ActivityIndicator color={colors['emerald-ink']} />
+                  </View>
+                ) : (
+                  <Text
+                    style={{
+                      fontFamily: fonts.display,
+                      fontSize: 18,
+                      lineHeight: 24,
+                      color: colors.ink,
+                    }}
+                  >
+                    {monthLabelOf(month.id)}
+                  </Text>
+                )}
+
+                {isCurrentMonth ? (
+                  <Text
+                    style={{
+                      fontFamily: fonts.sans,
+                      fontSize: 11,
+                      lineHeight: 15,
+                      color: colors['ink-muted'],
+                    }}
+                  >
+                    This month
+                  </Text>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Back to this month"
+                    accessibilityState={{ disabled: switching }}
+                    disabled={switching}
+                    hitSlop={8}
+                    onPress={() => setMonth(currentMonthId())}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: fonts['sans-medium'],
+                        fontSize: 11,
+                        lineHeight: 15,
+                        color: colors['emerald-ink'],
+                      }}
+                    >
+                      Back to this month
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Next month"
+                accessibilityState={{ disabled: switching || isCurrentMonth }}
+                disabled={switching || isCurrentMonth}
+                hitSlop={6}
+                onPress={() => setMonth(shiftMonth(month.id, 1))}
+                className="bg-surface border-chip-border"
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  borderWidth: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: switching || isCurrentMonth ? 0.4 : 1,
+                }}
+              >
+                <ChevronRight size={18} color={colors.ink} strokeWidth={2} />
+              </Pressable>
+            </View>
+
             <Card tone="plum" radius={28} padding={20}>
               <Text
                 style={{
@@ -256,7 +370,7 @@ export default function PlanScreen() {
 
               {members.map((member) => {
                 const mine = session?.user.id === member.userId;
-                const editable = mine && !locked;
+                const editable = mine && !locked && !switching;
                 const memberIncome = month.incomes[member.id] ?? 0;
 
                 return (
@@ -353,7 +467,7 @@ export default function PlanScreen() {
                   envelope={envelope}
                   limit={limits[envelope.id]}
                   spent={spent[envelope.id]}
-                  disabled={locked}
+                  disabled={locked || switching}
                   onChange={(value) => setLimit(envelope.id, value)}
                   onCommit={(value) => commitLimit(envelope.id, value)}
                 />

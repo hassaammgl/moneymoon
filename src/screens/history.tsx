@@ -212,8 +212,9 @@ export default function HistoryScreen() {
       <BottomNav
         active="home"
         onTabPress={(tab) => {
+          if (tab === 'home') return goHome();
           if (tab === 'plan') router.navigate('/plan');
-          if (tab === 'history') return;
+          if (tab === 'account') router.navigate('/account');
         }}
         onAddPress={openNewExpense}
       />

@@ -105,6 +105,7 @@ function RootNavigator() {
           <Stack.Screen name="history" />
           <Stack.Screen name="plan" />
           <Stack.Screen name="household" />
+          <Stack.Screen name="account" />
         </Stack.Protected>
       </Stack>
 

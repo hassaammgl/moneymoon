@@ -1,26 +1,28 @@
 /**
- * BottomNav — the two tabs plus the floating add button (v2).
+ * BottomNav — five slots: two tabs, the add button in the centre, two tabs.
  *
  * The bar is pinned to the bottom of the screen; screens reserve space for it
- * (see `BOTTOM_NAV_HEIGHT` + `FAB_OVERHANG`) so nothing scrolls underneath.
- * The FAB is 60px, rose, with a cream ring, and floats above the bar's centre.
+ * (see `BOTTOM_NAV_SPACE`) so nothing scrolls underneath. The add button owns
+ * the middle slot — exactly centred — and rises above the bar so it reads as
+ * the main action without covering a label.
  */
 import {
   CalendarRange,
   History as HistoryIcon,
   House,
   Plus,
+  UserRound,
 } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts } from '@/theme';
 
-export type NavTab = 'home' | 'plan' | 'history';
+export type NavTab = 'home' | 'plan' | 'history' | 'account';
 
 /** Height of the tab row, before the safe-area inset. */
 export const BOTTOM_NAV_HEIGHT = 64;
-/** How far the FAB rises above the bar. */
+/** How far the add button rises above the bar. */
 export const FAB_OVERHANG = 24;
 /** Space a scrolling screen must leave at the bottom. */
 export const BOTTOM_NAV_SPACE = BOTTOM_NAV_HEIGHT + FAB_OVERHANG + 16;
@@ -92,8 +94,7 @@ export function BottomNav({ active = 'home', onTabPress, onAddPress }: BottomNav
             flexDirection: 'row',
             alignItems: 'center',
             height: BOTTOM_NAV_HEIGHT,
-            paddingLeft: 16,
-            paddingRight: 8,
+            paddingHorizontal: 6,
           }}
         >
           <TabItem
@@ -108,22 +109,10 @@ export function BottomNav({ active = 'home', onTabPress, onAddPress }: BottomNav
             active={active === 'plan'}
             onPress={() => onTabPress?.('plan')}
           />
-          <TabItem
-            label="History"
-            icon={HistoryIcon}
-            active={active === 'history'}
-            onPress={() => onTabPress?.('history')}
-          />
 
-          {/*
-            The add button keeps its own slot instead of floating over a tab, so
-            adding History does not cover the middle label. It still rises above
-            the bar by ten pixels, and the screens' bottom padding already
-            reserves that overhang.
-          */}
           <View
             style={{
-              width: 68,
+              flex: 1,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -147,6 +136,19 @@ export function BottomNav({ active = 'home', onTabPress, onAddPress }: BottomNav
               <Plus size={26} color={colors.surface} strokeWidth={2.4} />
             </Pressable>
           </View>
+
+          <TabItem
+            label="History"
+            icon={HistoryIcon}
+            active={active === 'history'}
+            onPress={() => onTabPress?.('history')}
+          />
+          <TabItem
+            label="Account"
+            icon={UserRound}
+            active={active === 'account'}
+            onPress={() => onTabPress?.('account')}
+          />
         </View>
       </View>
     </View>

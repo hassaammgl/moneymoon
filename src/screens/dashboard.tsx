@@ -77,6 +77,7 @@ export default function DashboardScreen() {
         onTabPress={(tab) => {
           if (tab === 'plan') router.navigate('/plan');
           if (tab === 'history') router.navigate('/history');
+          if (tab === 'account') router.navigate('/account');
         }}
         onAddPress={openNewExpense}
       />

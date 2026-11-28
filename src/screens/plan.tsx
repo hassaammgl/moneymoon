@@ -549,6 +549,7 @@ export default function PlanScreen() {
         onTabPress={(tab) => {
           if (tab === 'home') return goHome();
           if (tab === 'history') router.push('/history');
+          if (tab === 'account') router.navigate('/account');
         }}
         onAddPress={() => setSheetOpen(true)}
       />
